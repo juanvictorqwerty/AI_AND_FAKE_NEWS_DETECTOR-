@@ -1,5 +1,6 @@
 import 'package:ai_fake_news_detector/pages/Splash.view.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get_navigation/src/root/get_material_app.dart';
 
 void main() {
   runApp(const App());
@@ -12,7 +13,7 @@ class App extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // TODO: implement build
-    return MaterialApp(
+    return GetMaterialApp(
       home: SplashView(),
     );
   }
