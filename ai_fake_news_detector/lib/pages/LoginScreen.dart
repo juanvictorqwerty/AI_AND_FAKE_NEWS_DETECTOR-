@@ -1,3 +1,4 @@
+import 'package:ai_fake_news_detector/pages/SignUpScreen.dart';
 import 'package:ai_fake_news_detector/utils/global.colors.dart';
 import 'package:ai_fake_news_detector/widgets/auth_button.global.dart';
 import 'package:ai_fake_news_detector/widgets/text.form.global.dart';
@@ -63,7 +64,13 @@ class Login extends StatelessWidget {
 
                 const SizedBox(height: 10),
 
-                AuthButton(),
+                AuthButton(
+                  text: 'Login',
+                  color: GlobalColors.mainColor,
+                  onTap: () {
+                    print('Login tapped');
+                  },
+                ),
 
                 const SizedBox(height: 10),
                 const Center(
@@ -74,11 +81,12 @@ class Login extends StatelessWidget {
                 ),
 
                 const SizedBox(height: 20),
-                AuthButton(),
-
-                const SizedBox(height: 20),
-                const Center(
-                  child: Text("Don't have an account? Create one now"),
+                AuthButton(
+                  text: "Connect anonymously",
+                  color: Colors.black,
+                  onTap: (){
+                    print("Continue without account");
+                  },
                 ),
               ],
             ),
@@ -100,6 +108,14 @@ class Login extends StatelessWidget {
               ),
             ),
             InkWell(
+              onTap: (){
+                Navigator.push(
+                  context, 
+                  MaterialPageRoute(
+                    builder:(context)=>SignUp()
+                    ),
+                );
+              },
               child: Text(
                 "Create one !",
                 style: TextStyle(

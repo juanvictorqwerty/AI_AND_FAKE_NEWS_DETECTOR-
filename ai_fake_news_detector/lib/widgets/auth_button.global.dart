@@ -1,22 +1,26 @@
-import 'package:ai_fake_news_detector/utils/global.colors.dart';
 import 'package:flutter/material.dart';
 
 class AuthButton extends StatelessWidget {
-  const AuthButton({super.key});
+  final String text;
+  final VoidCallback onTap;
+  final Color color;
+
+  const AuthButton({
+    super.key,
+    required this.text,
+    required this.onTap,
+    required this.color,
+  });
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      onTap:(){
-        print(
-          "Login"
-        );
-      } ,
+      onTap: onTap,
       child :Container(
       alignment: Alignment.center,
       height: 55,
       decoration: BoxDecoration(
-        color: GlobalColors.mainColor,
+        color: color,
         borderRadius: BorderRadius.circular(6),
         boxShadow: [
           BoxShadow(
@@ -26,8 +30,8 @@ class AuthButton extends StatelessWidget {
         ],
       ),
       child: Text(
-        "Login",
-        style: TextStyle(
+        text,
+        style: const TextStyle(
           color: Colors.white,
           fontWeight: FontWeight.bold
         ),

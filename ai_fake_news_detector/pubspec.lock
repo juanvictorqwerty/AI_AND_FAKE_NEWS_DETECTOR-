@@ -62,6 +62,14 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
+  flutter_dotenv:
+    dependency: "direct main"
+    description:
+      name: flutter_dotenv
+      sha256: d4130c4a43e0b13fefc593bc3961f2cb46e30cb79e253d4a526b1b5d24ae1ce4
+      url: "https://pub.dev"
+    source: hosted
+    version: "6.0.0"
   flutter_lints:
     dependency: "direct dev"
     description:
@@ -75,11 +83,6 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
-  flutter_web_plugins:
-    dependency: transitive
-    description: flutter
-    source: sdk
-    version: "0.0.0"
   get:
     dependency: "direct main"
     description:
@@ -88,14 +91,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "4.7.3"
-  hexcolor:
-    dependency: "direct main"
-    description:
-      name: hexcolor
-      sha256: "0f237eed7db96ebacd8fda00d17f5ae262aaa84c213d53457c06b1dcbdfa81f2"
-      url: "https://pub.dev"
-    source: hosted
-    version: "3.0.2"
   leak_tracker:
     dependency: transitive
     description:
