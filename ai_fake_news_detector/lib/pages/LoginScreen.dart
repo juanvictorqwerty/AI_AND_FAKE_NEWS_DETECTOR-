@@ -13,6 +13,7 @@ class Login extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         backgroundColor: GlobalColors.mainColor,
         title: Text(
           "AI & FAKE NEWS DETECTOR",
