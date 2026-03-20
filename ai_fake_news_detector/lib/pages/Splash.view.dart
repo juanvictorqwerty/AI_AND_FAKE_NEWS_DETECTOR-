@@ -11,7 +11,7 @@ class SplashView extends StatelessWidget{
   @override
   Widget build(BuildContext context) {
     Timer(Duration(seconds: 2),() {
-        Get.to(Login());
+        Get.offAll(Login());
       }
       );
     // TODO: implement build
