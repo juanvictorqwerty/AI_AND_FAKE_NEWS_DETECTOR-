@@ -18,6 +18,7 @@ class _SettingsPageState extends State<SettingsPage>
   static const platform = MethodChannel('android_intent/android_intent');
   AnimationController? _animController;
   Animation<double>? _fadeAnim;
+  late final AppLifecycleListener _lifecycleListener;
 
   @override
   void initState() {
@@ -29,6 +30,11 @@ class _SettingsPageState extends State<SettingsPage>
     _fadeAnim = CurvedAnimation(parent: _animController!, curve: Curves.easeOut);
     _animController!.forward();
 
+    // Listen for app lifecycle to check permission when returning from settings
+    _lifecycleListener = AppLifecycleListener(
+      onResume: () => _checkOverlayPermission(),
+    );
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkOverlayPermission();
     });
@@ -36,6 +42,7 @@ class _SettingsPageState extends State<SettingsPage>
 
   @override
   void dispose() {
+    _lifecycleListener.dispose();
     _animController?.dispose();
     super.dispose();
   }
