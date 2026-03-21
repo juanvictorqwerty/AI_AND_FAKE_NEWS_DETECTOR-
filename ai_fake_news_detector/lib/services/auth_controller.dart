@@ -14,6 +14,7 @@ class AuthController extends GetxController {
 
   static const String _tokenKey = 'auth_token';
   static const String _userKey = 'auth_user';
+  static const String _lastTokenExtendKey = 'last_token_extend_date';
 
   @override
   void onInit() {
@@ -136,5 +137,51 @@ class AuthController extends GetxController {
     token.value = '';
     currentUser.value = null;
     await _clearToken();
+  }
+
+  // Check if token should be extended (once per day)
+  // Returns true if token was extended, false if already extended today
+  Future<bool> prolongTokenIfNeeded() async {
+    if (token.value.isEmpty) {
+      return false;
+    }
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final lastExtendDateStr = prefs.getString(_lastTokenExtendKey);
+      
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+
+      if (lastExtendDateStr != null) {
+        final lastExtendDate = DateTime.parse(lastExtendDateStr);
+        final lastExtendDay = DateTime(lastExtendDate.year, lastExtendDate.month, lastExtendDate.day);
+        
+        // Already extended today
+        if (lastExtendDay.isAtSameMomentAs(today)) {
+          return false;
+        }
+      }
+
+      // Extend token for 7 more days
+      final result = await _authService.extendToken(token: token.value);
+      
+      if (result['success'] == true) {
+        // Update token if new one is provided
+        if (result['token'] != null) {
+          token.value = result['token'];
+          await _saveToken(result['token']);
+        }
+        
+        // Save today's date as last extend date
+        await prefs.setString(_lastTokenExtendKey, today.toIso8601String());
+        return true;
+      }
+      
+      return false;
+    } catch (e) {
+      print('Error extending token: $e');
+      return false;
+    }
   }
 }

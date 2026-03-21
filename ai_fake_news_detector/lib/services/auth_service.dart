@@ -98,6 +98,42 @@ class AuthService extends GetxService {
     }
   }
 
+  // Extend/refresh token - prolongs token validity for 7 more days
+  Future<Map<String, dynamic>> extendToken({required String token}) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/auth/extend-token'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+      
+      if (response.body.isEmpty) {
+        return {'success': false, 'message': 'Server returned empty response. Status: ${response.statusCode}'};
+      }
+
+      final body = jsonDecode(response.body);
+
+      if (body['success'] == true) {
+        return {
+          'success': true,
+          'token': body['token'],
+        };
+      } else {
+        return {
+          'success': false,
+          'message': body['message'] ?? 'Token extension failed',
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Error: ${e.toString()}',
+      };
+    }
+  }
+
   // Anonymous sign up - no email or password required
   Future<Map<String, dynamic>> anonymousSignUp({String? name}) async {
     try {
