@@ -1,6 +1,7 @@
 import { relations } from "drizzle-orm";
 import { 
     usersTable, 
+    tokensTable,
     newsCheckedTable, 
     newsCheckedIndexTable, 
     mediaCheckedTable, 
@@ -9,12 +10,20 @@ import {
 } from "./schema";
 
 export const usersRelations = relations(usersTable, ({ many }) => ({
+    tokens: many(tokensTable),
     newsChecked: many(newsCheckedTable),
     newsCheckedIndex: many(newsCheckedIndexTable),
     mediaChecked: many(mediaCheckedTable),
     mediaCheckedIndex: many(mediaCheckedIndexTable),
     logs: many(logsTable, {
         relationName: 'author'
+    })
+}));
+
+export const tokensRelations = relations(tokensTable, ({ one }) => ({
+    user: one(usersTable, {
+        fields: [tokensTable.userID],
+        references: [usersTable.id]
     })
 }));
 
