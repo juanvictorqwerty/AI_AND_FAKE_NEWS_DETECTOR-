@@ -10,6 +10,22 @@ export const usersTable = pgTable("users", {
     password:varchar("password",{length:255})
 });
 
+export const tokensTable = pgTable("tokens", {
+    id: uuid("id").defaultRandom().primaryKey().notNull(),
+
+    userID: uuid("user_id")
+        .notNull()
+        .references(() => usersTable.id, { onDelete: "cascade" }),
+
+    token: varchar("token", { length: 512 }).notNull(), // store hashed token ideally
+
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
+
+    expires_at: timestamp("expires_at", { withTimezone: true }).notNull(),
+
+    isRevoked: boolean("is_revoked").default(false).notNull()
+});
+
 export const newsCheckedTable=pgTable("news_checked",{
     id:uuid("id").defaultRandom().primaryKey().notNull(),
     created_at:timestamp("created_at",{withTimezone:true}).defaultNow(),
@@ -44,3 +60,4 @@ export const logsTable=pgTable("logs",{
     authorID:uuid("authorID").references(()=>usersTable.id),
     isException:boolean("isException").default(false).notNull()
 })
+
