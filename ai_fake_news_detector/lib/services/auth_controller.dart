@@ -135,6 +135,15 @@ class AuthController extends GetxController {
   }
 
   Future<void> signOut() async {
+    // Call server to revoke token if user is logged in
+    if (token.value.isNotEmpty) {
+      try {
+        await _authService.logout(token: token.value);
+      } catch (e) {
+        // Ignore errors during logout - still clear local storage
+        print('Server logout error: $e');
+      }
+    }
     token.value = '';
     currentUser.value = null;
     await _clearToken();
@@ -153,8 +162,8 @@ class AuthController extends GetxController {
   // Get user email
   String get userEmail => currentUser.value?['email']?.toString() ?? '';
 
-  // Upgrade anonymous user to registered user
-  Future<bool> upgradeAnonymousUser({
+  // Complete profile for anonymous user (convert to registered user)
+  Future<bool> completeProfile({
     required String email,
     required String password,
     required String name,
@@ -166,7 +175,7 @@ class AuthController extends GetxController {
 
     isLoading.value = true;
     try {
-      final result = await _authService.upgradeAnonymousUser(
+      final result = await _authService.completeProfile(
         token: token.value,
         email: email,
         password: password,
@@ -192,8 +201,8 @@ class AuthController extends GetxController {
     }
   }
 
-  // Update user profile
-  Future<bool> updateProfile({String? name, String? email}) async {
+  // Edit user profile
+  Future<bool> editProfile({String? name, String? email, String? password}) async {
     if (token.value.isEmpty) {
       Get.snackbar('Error', 'Not logged in');
       return false;
@@ -201,10 +210,11 @@ class AuthController extends GetxController {
 
     isLoading.value = true;
     try {
-      final result = await _authService.updateProfile(
+      final result = await _authService.editProfile(
         token: token.value,
         name: name,
         email: email,
+        password: password,
       );
 
       if (result['success'] == true) {

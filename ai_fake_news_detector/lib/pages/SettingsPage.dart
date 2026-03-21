@@ -1,4 +1,4 @@
-import 'package:ai_fake_news_detector/pages/LoginScreen.dart';
+timport 'package:ai_fake_news_detector/pages/LoginScreen.dart';
 import 'package:ai_fake_news_detector/services/auth_controller.dart';
 import 'package:ai_fake_news_detector/utils/global.colors.dart';
 import 'package:flutter/material.dart';
@@ -509,7 +509,7 @@ class _SettingsPageState extends State<SettingsPage>
                                   setState(() => isLoading = true);
 
                                   final success =
-                                      await authController.upgradeAnonymousUser(
+                                      await authController.completeProfile(
                                     name: nameController.text.trim(),
                                     email: emailController.text.trim(),
                                     password: passwordController.text,
@@ -644,7 +644,7 @@ class _SettingsPageState extends State<SettingsPage>
 
                                   setState(() => isLoading = true);
 
-                                  final success = await authController.updateProfile(
+                                  final success = await authController.editProfile(
                                     name: nameController.text.trim(),
                                     email: emailController.text.trim(),
                                   );

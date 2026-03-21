@@ -175,8 +175,8 @@ class AuthService extends GetxService {
     }
   }
 
-  // Upgrade anonymous user to registered user
-  Future<Map<String, dynamic>> upgradeAnonymousUser({
+  // Complete profile for anonymous user (convert to registered user)
+  Future<Map<String, dynamic>> completeProfile({
     required String token,
     required String email,
     required String password,
@@ -184,7 +184,7 @@ class AuthService extends GetxService {
   }) async {
     try {
       final response = await http.post(
-        Uri.parse('$baseUrl/auth/upgrade-anonymous'),
+        Uri.parse('$baseUrl/profile/complete'),
         body: jsonEncode({
           'email': email,
           'password': password,
@@ -222,19 +222,21 @@ class AuthService extends GetxService {
     }
   }
 
-  // Update user profile
-  Future<Map<String, dynamic>> updateProfile({
+  // Edit user profile
+  Future<Map<String, dynamic>> editProfile({
     required String token,
     String? name,
     String? email,
+    String? password,
   }) async {
     try {
       final Map<String, dynamic> bodyData = {};
       if (name != null) bodyData['name'] = name;
       if (email != null) bodyData['email'] = email;
+      if (password != null) bodyData['password'] = password;
 
-      final response = await http.put(
-        Uri.parse('$baseUrl/auth/profile'),
+      final response = await http.patch(
+        Uri.parse('$baseUrl/profile/edit'),
         body: jsonEncode(bodyData),
         headers: {
           'Content-Type': 'application/json',
@@ -271,7 +273,7 @@ class AuthService extends GetxService {
   Future<Map<String, dynamic>> getProfile({required String token}) async {
     try {
       final response = await http.get(
-        Uri.parse('$baseUrl/auth/profile'),
+        Uri.parse('$baseUrl/profile'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -303,22 +305,56 @@ class AuthService extends GetxService {
     }
   }
 
-  // Change password
+  // Logout - revokes the current token on the server
+  Future<Map<String, dynamic>> logout({required String token}) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/auth/logout'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.body.isEmpty) {
+        return {'success': false, 'message': 'Server returned empty response. Status: ${response.statusCode}'};
+      }
+
+      final body = jsonDecode(response.body);
+
+      if (body['success'] == true) {
+        return {
+          'success': true,
+          'message': body['message'] ?? 'Logged out successfully',
+        };
+      } else {
+        return {
+          'success': false,
+          'message': body['message'] ?? 'Logout failed',
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Error: ${e.toString()}',
+      };
+    }
+  }
+
+  // Change password (uses edit profile endpoint)
   Future<Map<String, dynamic>> changePassword({
     required String token,
     String? currentPassword,
     required String newPassword,
   }) async {
     try {
+      // Use the edit profile endpoint to change password
       final Map<String, dynamic> bodyData = {
-        'newPassword': newPassword,
+        'password': newPassword,
       };
-      if (currentPassword != null) {
-        bodyData['currentPassword'] = currentPassword;
-      }
 
-      final response = await http.put(
-        Uri.parse('$baseUrl/auth/change-password'),
+      final response = await http.patch(
+        Uri.parse('$baseUrl/profile/edit'),
         body: jsonEncode(bodyData),
         headers: {
           'Content-Type': 'application/json',
