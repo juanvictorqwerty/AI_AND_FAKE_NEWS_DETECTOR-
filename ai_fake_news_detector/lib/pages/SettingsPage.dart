@@ -351,36 +351,46 @@ class _SettingsPageState extends State<SettingsPage>
   /// the exact page where users toggle "Allow display over other apps".
   void _openOverlayPermissionSettings(BuildContext context) async {
     try {
-      final Map<String, dynamic> args = {
-        'action': 'android.settings.action.MANAGE_OVERLAY_PERMISSION',
-        'data': 'package:com.example.ai_fake_news_detector',
-      };
-      await platform.invokeMethod('launch', args);
+      // First try: dedicated method that fires the overlay-specific intent
+      await platform.invokeMethod('openOverlaySettings');
 
       // Re-check permission when the user returns
       await Future.delayed(const Duration(milliseconds: 800));
       await _checkOverlayPermission();
     } catch (e) {
-      debugPrint("Error opening overlay settings: $e");
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            behavior: SnackBarBehavior.floating,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            backgroundColor: const Color(0xFF1A1A2E),
-            content: const Text(
-              "Go to Settings → Apps → AFND → Permissions → Display over other apps",
-              style: TextStyle(color: Colors.white),
+      debugPrint("Primary overlay intent failed: $e — trying fallback");
+      try {
+        // Fallback: pass the action + package URI via the generic launch method
+        final Map<String, dynamic> args = {
+          'action': 'android.settings.action.MANAGE_OVERLAY_PERMISSION',
+          'data': 'package:com.example.ai_fake_news_detector',
+        };
+        await platform.invokeMethod('launch', args);
+
+        await Future.delayed(const Duration(milliseconds: 800));
+        await _checkOverlayPermission();
+      } catch (e2) {
+        debugPrint("Fallback also failed: $e2");
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+              backgroundColor: const Color(0xFF1A1A2E),
+              content: const Text(
+                "Go to Settings → Apps → AFND → Display over other apps",
+                style: TextStyle(color: Colors.white),
+              ),
+              duration: const Duration(seconds: 5),
+              action: SnackBarAction(
+                label: "OK",
+                textColor: GlobalColors.mainColor,
+                onPressed: () {},
+              ),
             ),
-            duration: const Duration(seconds: 5),
-            action: SnackBarAction(
-              label: "OK",
-              textColor: GlobalColors.mainColor,
-              onPressed: () {},
-            ),
-          ),
-        );
+          );
+        }
       }
     }
   }
