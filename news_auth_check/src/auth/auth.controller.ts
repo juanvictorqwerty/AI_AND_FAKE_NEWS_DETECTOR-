@@ -8,17 +8,35 @@ export class AuthController {
 
     @Post('signup')
     async signUp(@Body() signUpDto: SignUpDto) {
-        return this.authService.signUp(signUpDto);
+        try {
+            const data = await this.authService.signUp(signUpDto);
+            return { success: true, ...data };
+        } catch (error) {
+            const message = error.response?.message || error.message || 'Signup failed';
+            return { success: false, message };
+        }
     }
 
     @Post('signin')
     @HttpCode(HttpStatus.OK)
     async signIn(@Body() signInDto: SignInDto) {
-        return this.authService.signIn(signInDto);
+        try {
+            const data = await this.authService.signIn(signInDto);
+            return { success: true, ...data };
+        } catch (error) {
+            const message = error.response?.message || error.message || 'Login failed';
+            return { success: false, message };
+        }
     }
 
     @Post('anonymous-signup')
     async signUpAnonymous(@Body() anonymousSignUpDto: AnonymousSignUpDto) {
-        return this.authService.signUpAnonymous(anonymousSignUpDto);
+        try {
+            const data = await this.authService.signUpAnonymous(anonymousSignUpDto);
+            return { success: true, ...data };
+        } catch (error) {
+            const message = error.response?.message || error.message || 'Anonymous signup failed';
+            return { success: false, message };
+        }
     }
 }

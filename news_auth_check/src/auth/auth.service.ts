@@ -1,6 +1,9 @@
 import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
 import { UsersService } from '../users/users.service';
 import { SignUpDto, SignInDto, AnonymousSignUpDto } from './dto';
+import { DatabaseService } from '../db/database.service';
+import * as schema from '../db/schema';
+import { sql } from 'drizzle-orm';
 import * as bcrypt from 'bcryptjs';
 import * as jwt from 'jsonwebtoken';
 
@@ -9,7 +12,10 @@ export class AuthService {
     private readonly jwtSecret = process.env.JWT_SECRET || 'your-secret-key';
     private readonly jwtExpiresIn = '7d';
 
-    constructor(private readonly usersService: UsersService) {}
+    constructor(
+        private readonly usersService: UsersService,
+        private readonly db: DatabaseService,
+    ) {}
 
     async signUp(signUpDto: SignUpDto) {
         const { email, password, name } = signUpDto;
@@ -32,6 +38,9 @@ export class AuthService {
 
         // Generate token
         const token = this.generateToken(user.id, user.email);
+
+        // Save token to database
+        await this.saveToken(user.id, token);
 
         return {
             user: {
@@ -56,6 +65,9 @@ export class AuthService {
 
         // Generate token (using empty string for email since there's no email)
         const token = this.generateToken(user.id, '');
+
+        // Save token to database
+        await this.saveToken(user.id, token);
 
         return {
             user: {
@@ -98,6 +110,9 @@ export class AuthService {
         // Generate token
         const token = this.generateToken(user.id, user.email);
 
+        // Save token to database
+        await this.saveToken(user.id, token);
+
         return {
             user: {
                 id: user.id,
@@ -114,6 +129,17 @@ export class AuthService {
             { sub: userId, email },
             this.jwtSecret,
             { expiresIn: this.jwtExpiresIn },
+        );
+    }
+
+    private async saveToken(userId: string, token: string): Promise<void> {
+        const expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + 7); // 7 days from now
+
+        // Use raw SQL with sql() helper
+        await this.db.db.execute(
+            sql`INSERT INTO tokens (id, user_id, token, created_at, expires_at, is_revoked) 
+                VALUES (gen_random_uuid(), ${userId}, ${token}, NOW(), ${expiresAt}, false)`
         );
     }
 

@@ -119,11 +119,15 @@ class _LoginState extends State<Login> {
                       color: Colors.black,
                       isLoading: _isLoading,
                       onTap: _isLoading ? null : () async {
+                        print('Anonymous button tapped');
                         setState(() => _isLoading = true);
+                        print('Loading set to true');
 
                         // Call anonymous signup API
                         final authController = Get.find<AuthController>();
+                        print('Got auth controller, calling anonymousSignUp');
                         final success = await authController.anonymousSignUp();
+                        print('anonymousSignUp returned: $success');
 
                         if (success) {
                           Get.offAll(() => Homepage());

@@ -105,6 +105,9 @@ class AuthController extends GetxController {
         Get.snackbar('Error', result['message'] ?? 'Login failed');
         return false;
       }
+    } catch (e) {
+      Get.snackbar('Error', 'Connection failed: ${e.toString()}');
+      return false;
     } finally {
       isLoading.value = false;
     }
