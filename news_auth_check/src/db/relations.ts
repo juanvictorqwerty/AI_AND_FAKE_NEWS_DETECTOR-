@@ -13,7 +13,9 @@ export const usersRelations = relations(usersTable, ({ many }) => ({
     newsCheckedIndex: many(newsCheckedIndexTable),
     mediaChecked: many(mediaCheckedTable),
     mediaCheckedIndex: many(mediaCheckedIndexTable),
-    logs: many(logsTable)
+    logs: many(logsTable, {
+        relationName: 'author'
+    })
 }));
 
 export const newsCheckedRelations = relations(newsCheckedTable, ({ one }) => ({
@@ -47,6 +49,7 @@ export const mediaCheckedIndexRelations = relations(mediaCheckedIndexTable, ({ o
 export const logsRelations = relations(logsTable, ({ one }) => ({
     author: one(usersTable, {
         fields: [logsTable.authorID],
-        references: [usersTable.id]
+        references: [usersTable.id],
+        relationName: 'author'
     })
 }));

@@ -39,8 +39,8 @@ export const mediaCheckedIndexTable= pgTable("media_checked_index",{
 });
 
 export const logsTable=pgTable("logs",{
-    id:uuid("id").primaryKey().notNull().references(()=>usersTable.id),
+    id:uuid("id").defaultRandom().primaryKey().notNull(),
     created_at:timestamp("created_at",{withTimezone:true}).defaultNow(),
-    authorID:uuid("authorID"),
+    authorID:uuid("authorID").references(()=>usersTable.id),
     isException:boolean("isException").default(false).notNull()
 })
