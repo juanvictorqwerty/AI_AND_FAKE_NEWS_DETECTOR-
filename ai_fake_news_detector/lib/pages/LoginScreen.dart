@@ -1,7 +1,10 @@
 import 'package:ai_fake_news_detector/pages/SignUpScreen.dart';
+import 'package:ai_fake_news_detector/pages/HomePage.dart';
 import 'package:ai_fake_news_detector/utils/global.colors.dart';
 import 'package:ai_fake_news_detector/widgets/auth_button.global.dart';
 import 'package:ai_fake_news_detector/widgets/text.form.global.dart';
+import 'package:ai_fake_news_detector/services/auth_controller.dart';
+import 'package:get/get.dart';
 import 'package:flutter/material.dart';
 
 class Login extends StatelessWidget {
@@ -65,30 +68,63 @@ class Login extends StatelessWidget {
 
                 const SizedBox(height: 10),
 
-                AuthButton(
-                  text: 'Login',
-                  color: GlobalColors.mainColor,
-                  onTap: () {
-                    print('Login tapped');
-                  },
-                ),
+                Obx(() {
+                  final authController = Get.find<AuthController>();
+                  final isLoading = authController.isLoading.value;
 
-                const SizedBox(height: 10),
-                const Center(
-                  child: Text(
-                    "Or",
-                    style: TextStyle(fontSize: 16),
-                  ),
-                ),
+                  return Column(
+                    children: [
+                      AuthButton(
+                        text: 'Login',
+                        color: GlobalColors.mainColor,
+                        isLoading: isLoading,
+                        onTap: isLoading ? null : () async {
+                          // Validate inputs
+                          if (emailController.text.isEmpty || 
+                              passwordController.text.isEmpty) {
+                            Get.snackbar('Error', 'Please fill in all fields');
+                            return;
+                          }
 
-                const SizedBox(height: 20),
-                AuthButton(
-                  text: "Connect anonymously",
-                  color: Colors.black,
-                  onTap: (){
-                    print("Continue without account");
-                  },
-                ),
+                          // Call login API
+                          final authController = Get.find<AuthController>();
+                          final success = await authController.signIn(
+                            email: emailController.text,
+                            password: passwordController.text,
+                          );
+
+                          if (success) {
+                            Get.offAll(() => Homepage());
+                          }
+                        },
+                      ),
+
+                      const SizedBox(height: 10),
+                      const Center(
+                        child: Text(
+                          "Or",
+                          style: TextStyle(fontSize: 16),
+                        ),
+                      ),
+
+                      const SizedBox(height: 20),
+                      AuthButton(
+                        text: "Connect anonymously",
+                        color: Colors.black,
+                        isLoading: isLoading,
+                        onTap: isLoading ? null : () async {
+                          // Call anonymous signup API
+                          final authController = Get.find<AuthController>();
+                          final success = await authController.anonymousSignUp();
+
+                          if (success) {
+                            Get.offAll(() => Homepage());
+                          }
+                        },
+                      ),
+                    ],
+                  );
+                }),
               ],
             ),
           ),

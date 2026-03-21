@@ -1,14 +1,18 @@
 import 'package:ai_fake_news_detector/pages/LoginScreen.dart';
+import 'package:ai_fake_news_detector/pages/HomePage.dart';
 import 'package:ai_fake_news_detector/utils/global.colors.dart';
 import 'package:ai_fake_news_detector/widgets/auth_button.global.dart';
 import 'package:ai_fake_news_detector/widgets/text.form.global.dart';
+import 'package:ai_fake_news_detector/services/auth_controller.dart';
+import 'package:get/get.dart';
 import 'package:flutter/material.dart';
 
 class SignUp extends StatelessWidget {
   SignUp({super.key});
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
-  final TextEditingController confirmPasswordController=TextEditingController();
+  final TextEditingController confirmPasswordController = TextEditingController();
+  final TextEditingController nameController = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
@@ -46,6 +50,16 @@ class SignUp extends StatelessWidget {
                 ),
                 const SizedBox(height: 15),
 
+                // Name input
+                TextFormGlobal(
+                  controller: nameController,
+                  text: 'Name',
+                  obscure: false,
+                  textInputType: TextInputType.text,
+                ),
+
+                const SizedBox(height: 10),
+
                 // Email input
                 TextFormGlobal(
                   controller: emailController,
@@ -77,13 +91,42 @@ class SignUp extends StatelessWidget {
 
                 const SizedBox(height: 10),
 
-                AuthButton(
-                  text: 'Sign Up',
-                  color: GlobalColors.mainColor,
-                  onTap: () {
-                    print('Sign up tapped');
-                  },
-                ),
+                Obx(() {
+                  final authController = Get.find<AuthController>();
+                  final isLoading = authController.isLoading.value;
+
+                  return AuthButton(
+                    text: 'Sign Up',
+                    color: GlobalColors.mainColor,
+                    isLoading: isLoading,
+                    onTap: isLoading ? null : () async {
+                      // Validate inputs
+                      if (emailController.text.isEmpty || 
+                          passwordController.text.isEmpty || 
+                          nameController.text.isEmpty) {
+                        Get.snackbar('Error', 'Please fill in all fields');
+                        return;
+                      }
+
+                      if (passwordController.text != confirmPasswordController.text) {
+                        Get.snackbar('Error', 'Passwords do not match');
+                        return;
+                      }
+
+                      // Call signup API
+                      final authController = Get.find<AuthController>();
+                      final success = await authController.signUp(
+                        email: emailController.text,
+                        password: passwordController.text,
+                        name: nameController.text,
+                      );
+
+                      if (success) {
+                        Get.offAll(() => Homepage());
+                      }
+                    },
+                  );
+                }),
 
               ],
             ),
