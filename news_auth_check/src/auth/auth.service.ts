@@ -3,7 +3,7 @@ import { UsersService } from '../users/users.service';
 import { SignUpDto, SignInDto, AnonymousSignUpDto } from './dto';
 import { DatabaseService } from '../db/database.service';
 import * as schema from '../db/schema';
-import { sql } from 'drizzle-orm';
+import { sql, eq, and } from 'drizzle-orm';
 import * as bcrypt from 'bcryptjs';
 import * as jwt from 'jsonwebtoken';
 
@@ -146,9 +146,39 @@ export class AuthService {
     async validateToken(token: string): Promise<{ userId: string; email: string } | null> {
         try {
             const decoded = jwt.verify(token, this.jwtSecret) as { sub: string; email: string };
+
+            // Check if token is revoked in database
+            const tokenRecord = await this.db.db
+                .select()
+                .from(schema.tokensTable)
+                .where(
+                    and(
+                        eq(schema.tokensTable.token, token),
+                        eq(schema.tokensTable.isRevoked, false),
+                    ),
+                )
+                .limit(1);
+
+            if (!tokenRecord || tokenRecord.length === 0) {
+                return null;
+            }
+
             return { userId: decoded.sub, email: decoded.email };
         } catch {
             return null;
+        }
+    }
+
+    async revokeToken(token: string): Promise<boolean> {
+        try {
+            const result = await this.db.db
+                .update(schema.tokensTable)
+                .set({ isRevoked: true })
+                .where(eq(schema.tokensTable.token, token));
+
+            return true;
+        } catch {
+            return false;
         }
     }
 }

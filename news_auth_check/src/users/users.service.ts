@@ -51,4 +51,16 @@ export class UsersService {
             .returning();
         return result[0];
     }
+
+    async updateUser(
+        id: string,
+        updateData: Partial<Pick<User, 'name' | 'email' | 'password'>>,
+    ): Promise<User | undefined> {
+        const result = await this.db.db
+            .update(usersTable)
+            .set(updateData)
+            .where(eq(usersTable.id, id))
+            .returning();
+        return result[0];
+    }
 }
