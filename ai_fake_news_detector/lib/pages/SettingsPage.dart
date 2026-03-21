@@ -1,4 +1,4 @@
-timport 'package:ai_fake_news_detector/pages/LoginScreen.dart';
+import 'package:ai_fake_news_detector/pages/LoginScreen.dart';
 import 'package:ai_fake_news_detector/services/auth_controller.dart';
 import 'package:ai_fake_news_detector/utils/global.colors.dart';
 import 'package:flutter/material.dart';
@@ -62,7 +62,7 @@ class _SettingsPageState extends State<SettingsPage>
   @override
   Widget build(BuildContext context) {
     final authController = Get.find<AuthController>();
-    final bool isAnonymous = authController.isAnonymous;
+    final bool isAnonymous = authController.isAnonymousUser;
     final String userName = authController.userName;
     final String userEmail = authController.userEmail;
 

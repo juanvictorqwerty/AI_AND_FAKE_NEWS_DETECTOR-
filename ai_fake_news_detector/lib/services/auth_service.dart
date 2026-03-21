@@ -206,12 +206,12 @@ class AuthService extends GetxService {
         return {
           'success': true,
           'user': body['user'],
-          'token': body['token'],
+          // Note: completeProfile doesn't return a new token (same user, same token)
         };
       } else {
         return {
           'success': false,
-          'message': body['message'] ?? 'Upgrade failed',
+          'message': body['message'] ?? 'Failed to complete profile',
         };
       }
     } catch (e) {

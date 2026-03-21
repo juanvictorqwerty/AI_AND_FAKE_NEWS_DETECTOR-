@@ -10,11 +10,13 @@ class AuthController extends GetxController {
   final RxString token = ''.obs;
   final RxBool isLoading = false.obs;
   final RxBool isInitialized = false.obs;
+  final RxBool isAnonymous = false.obs;
 
   bool get isLoggedIn => token.value.isNotEmpty;
 
   static const String _tokenKey = 'auth_token';
   static const String _userKey = 'auth_user';
+  static const String _isAnonymousKey = 'is_anonymous';
   static const String _lastTokenExtendKey = 'last_token_extend_date';
 
   @override
@@ -28,11 +30,16 @@ class AuthController extends GetxController {
       final prefs = await SharedPreferences.getInstance();
       final savedToken = prefs.getString(_tokenKey);
       final savedUser = prefs.getString(_userKey);
-      
+      final savedIsAnonymous = prefs.getBool(_isAnonymousKey);
+
       if (savedToken != null && savedToken.isNotEmpty) {
         token.value = savedToken;
-        // Note: In a real app, you'd also restore user data
-        // For now, we'll just use the token
+        // Restore anonymous status (default to false if not set)
+        isAnonymous.value = savedIsAnonymous ?? false;
+        // Restore user data if available
+        if (savedUser != null) {
+          currentUser.value = jsonDecode(savedUser);
+        }
       }
     } catch (e) {
       print('Error loading token: $e');
@@ -50,11 +57,21 @@ class AuthController extends GetxController {
     }
   }
 
+  Future<void> _saveIsAnonymous(bool value) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_isAnonymousKey, value);
+    } catch (e) {
+      print('Error saving isAnonymous: $e');
+    }
+  }
+
   Future<void> _clearToken() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_tokenKey);
       await prefs.remove(_userKey);
+      await prefs.remove(_isAnonymousKey);
     } catch (e) {
       print('Error clearing token: $e');
     }
@@ -76,7 +93,10 @@ class AuthController extends GetxController {
       if (result['success'] == true) {
         token.value = result['token'];
         currentUser.value = result['user'];
+        isAnonymous.value = false; // Regular signup = not anonymous
         await _saveToken(result['token']);
+        await _saveUser(result['user']);
+        await _saveIsAnonymous(false);
         return true;
       } else {
         Get.snackbar('Error', result['message'] ?? 'Signup failed');
@@ -101,7 +121,10 @@ class AuthController extends GetxController {
       if (result['success'] == true) {
         token.value = result['token'];
         currentUser.value = result['user'];
+        isAnonymous.value = false; // Regular sign in = not anonymous
         await _saveToken(result['token']);
+        await _saveUser(result['user']);
+        await _saveIsAnonymous(false);
         return true;
       } else {
         Get.snackbar('Error', result['message'] ?? 'Login failed');
@@ -119,11 +142,14 @@ class AuthController extends GetxController {
     isLoading.value = true;
     try {
       final result = await _authService.anonymousSignUp(name: name);
-      
+
       if (result['success'] == true) {
         token.value = result['token'];
         currentUser.value = result['user'];
+        isAnonymous.value = true; // Mark as anonymous
         await _saveToken(result['token']);
+        await _saveUser(result['user']);
+        await _saveIsAnonymous(true);
         return true;
       } else {
         Get.snackbar('Error', result['message'] ?? 'Anonymous signup failed');
@@ -149,12 +175,8 @@ class AuthController extends GetxController {
     await _clearToken();
   }
 
-  // Check if current user is anonymous (no email)
-  bool get isAnonymous {
-    if (currentUser.value == null) return false;
-    final email = currentUser.value?['email'];
-    return email == null || email.toString().isEmpty;
-  }
+  // Check if current user is anonymous (stored in prefs, updated when completing profile)
+  bool get isAnonymousUser => isAnonymous.value;
 
   // Get user name
   String get userName => currentUser.value?['name']?.toString() ?? 'User';
@@ -183,10 +205,11 @@ class AuthController extends GetxController {
       );
 
       if (result['success'] == true) {
-        token.value = result['token'];
+        // completeProfile doesn't return a new token (same user, token stays valid)
         currentUser.value = result['user'];
-        await _saveToken(result['token']);
+        isAnonymous.value = false; // No longer anonymous after completing profile
         await _saveUser(result['user']);
+        await _saveIsAnonymous(false);
         Get.snackbar('Success', 'Account created successfully!');
         return true;
       } else {
