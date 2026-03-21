@@ -7,12 +7,19 @@ import 'package:ai_fake_news_detector/services/auth_controller.dart';
 import 'package:get/get.dart';
 import 'package:flutter/material.dart';
 
-class SignUp extends StatelessWidget {
+class SignUp extends StatefulWidget {
   SignUp({super.key});
+
+  @override
+  State<SignUp> createState() => _SignUpState();
+}
+
+class _SignUpState extends State<SignUp> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   final TextEditingController confirmPasswordController = TextEditingController();
   final TextEditingController nameController = TextEditingController();
+  bool _isLoading = false;
 
   @override
   Widget build(BuildContext context) {
@@ -91,42 +98,40 @@ class SignUp extends StatelessWidget {
 
                 const SizedBox(height: 10),
 
-                Obx(() {
-                  final authController = Get.find<AuthController>();
-                  final isLoading = authController.isLoading.value;
+                AuthButton(
+                  text: 'Sign Up',
+                  color: GlobalColors.mainColor,
+                  isLoading: _isLoading,
+                  onTap: _isLoading ? null : () async {
+                    // Validate inputs
+                    if (emailController.text.isEmpty || 
+                        passwordController.text.isEmpty || 
+                        nameController.text.isEmpty) {
+                      Get.snackbar('Error', 'Please fill in all fields');
+                      return;
+                    }
 
-                  return AuthButton(
-                    text: 'Sign Up',
-                    color: GlobalColors.mainColor,
-                    isLoading: isLoading,
-                    onTap: isLoading ? null : () async {
-                      // Validate inputs
-                      if (emailController.text.isEmpty || 
-                          passwordController.text.isEmpty || 
-                          nameController.text.isEmpty) {
-                        Get.snackbar('Error', 'Please fill in all fields');
-                        return;
-                      }
+                    if (passwordController.text != confirmPasswordController.text) {
+                      Get.snackbar('Error', 'Passwords do not match');
+                      return;
+                    }
 
-                      if (passwordController.text != confirmPasswordController.text) {
-                        Get.snackbar('Error', 'Passwords do not match');
-                        return;
-                      }
+                    setState(() => _isLoading = true);
 
-                      // Call signup API
-                      final authController = Get.find<AuthController>();
-                      final success = await authController.signUp(
-                        email: emailController.text,
-                        password: passwordController.text,
-                        name: nameController.text,
-                      );
+                    // Call signup API
+                    final authController = Get.find<AuthController>();
+                    final success = await authController.signUp(
+                      email: emailController.text,
+                      password: passwordController.text,
+                      name: nameController.text,
+                    );
 
-                      if (success) {
-                        Get.offAll(() => Homepage());
-                      }
-                    },
-                  );
-                }),
+                    if (success) {
+                      Get.offAll(() => Homepage());
+                    }
+                    if (mounted) setState(() => _isLoading = false);
+                  },
+                ),
 
               ],
             ),

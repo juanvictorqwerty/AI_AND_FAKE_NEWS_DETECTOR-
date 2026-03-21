@@ -7,10 +7,17 @@ import 'package:ai_fake_news_detector/services/auth_controller.dart';
 import 'package:get/get.dart';
 import 'package:flutter/material.dart';
 
-class Login extends StatelessWidget {
+class Login extends StatefulWidget {
   Login({super.key});
+
+  @override
+  State<Login> createState() => _LoginState();
+}
+
+class _LoginState extends State<Login> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
+  bool _isLoading = false;
 
   @override
   Widget build(BuildContext context) {
@@ -68,63 +75,64 @@ class Login extends StatelessWidget {
 
                 const SizedBox(height: 10),
 
-                Obx(() {
-                  final authController = Get.find<AuthController>();
-                  final isLoading = authController.isLoading.value;
+                Column(
+                  children: [
+                    AuthButton(
+                      text: 'Login',
+                      color: GlobalColors.mainColor,
+                      isLoading: _isLoading,
+                      onTap: _isLoading ? null : () async {
+                        // Validate inputs
+                        if (emailController.text.isEmpty || 
+                            passwordController.text.isEmpty) {
+                          Get.snackbar('Error', 'Please fill in all fields');
+                          return;
+                        }
 
-                  return Column(
-                    children: [
-                      AuthButton(
-                        text: 'Login',
-                        color: GlobalColors.mainColor,
-                        isLoading: isLoading,
-                        onTap: isLoading ? null : () async {
-                          // Validate inputs
-                          if (emailController.text.isEmpty || 
-                              passwordController.text.isEmpty) {
-                            Get.snackbar('Error', 'Please fill in all fields');
-                            return;
-                          }
+                        setState(() => _isLoading = true);
 
-                          // Call login API
-                          final authController = Get.find<AuthController>();
-                          final success = await authController.signIn(
-                            email: emailController.text,
-                            password: passwordController.text,
-                          );
+                        // Call login API
+                        final authController = Get.find<AuthController>();
+                        final success = await authController.signIn(
+                          email: emailController.text,
+                          password: passwordController.text,
+                        );
 
-                          if (success) {
-                            Get.offAll(() => Homepage());
-                          }
-                        },
+                        if (success) {
+                          Get.offAll(() => Homepage());
+                        }
+                        if (mounted) setState(() => _isLoading = false);
+                      },
+                    ),
+
+                    const SizedBox(height: 10),
+                    const Center(
+                      child: Text(
+                        "Or",
+                        style: TextStyle(fontSize: 16),
                       ),
+                    ),
 
-                      const SizedBox(height: 10),
-                      const Center(
-                        child: Text(
-                          "Or",
-                          style: TextStyle(fontSize: 16),
-                        ),
-                      ),
+                    const SizedBox(height: 20),
+                    AuthButton(
+                      text: "Connect anonymously",
+                      color: Colors.black,
+                      isLoading: _isLoading,
+                      onTap: _isLoading ? null : () async {
+                        setState(() => _isLoading = true);
 
-                      const SizedBox(height: 20),
-                      AuthButton(
-                        text: "Connect anonymously",
-                        color: Colors.black,
-                        isLoading: isLoading,
-                        onTap: isLoading ? null : () async {
-                          // Call anonymous signup API
-                          final authController = Get.find<AuthController>();
-                          final success = await authController.anonymousSignUp();
+                        // Call anonymous signup API
+                        final authController = Get.find<AuthController>();
+                        final success = await authController.anonymousSignUp();
 
-                          if (success) {
-                            Get.offAll(() => Homepage());
-                          }
-                        },
-                      ),
-                    ],
-                  );
-                }),
+                        if (success) {
+                          Get.offAll(() => Homepage());
+                        }
+                        if (mounted) setState(() => _isLoading = false);
+                      },
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
