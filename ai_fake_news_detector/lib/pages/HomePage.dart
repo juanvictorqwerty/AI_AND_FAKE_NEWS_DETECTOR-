@@ -1,3 +1,4 @@
+import 'package:ai_fake_news_detector/pages/SettingsPage.dart';
 import 'package:ai_fake_news_detector/utils/global.colors.dart';
 import 'package:flutter/material.dart';
 
@@ -20,15 +21,18 @@ class Homepage extends StatelessWidget {
           ),
         ),
         actions: <Widget>[
-          IconButton( 
-            icon: Icon(
-              Icons.settings,
-              color: Colors.white,
-            ),
-            onPressed: (){
-
+            IconButton( 
+              icon: Icon(
+                Icons.settings,
+                color: Colors.white,
+              ),
+              onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const SettingsPage()),
+              );
             },
-            )
+          )
         ],
       ),
       body: SingleChildScrollView(
