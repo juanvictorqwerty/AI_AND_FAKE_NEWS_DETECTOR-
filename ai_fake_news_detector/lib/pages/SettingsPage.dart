@@ -62,16 +62,19 @@ class _SettingsPageState extends State<SettingsPage>
   @override
   Widget build(BuildContext context) {
     final authController = Get.find<AuthController>();
-    final bool isAnonymous = authController.isAnonymousUser;
-    final String userName = authController.userName;
-    final String userEmail = authController.userEmail;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF6F7FB),
       appBar: _buildAppBar(),
       body: FadeTransition(
         opacity: _fadeAnim ?? const AlwaysStoppedAnimation(1.0),
-        child: SingleChildScrollView(
+        child: Obx(() {
+          // These values will update automatically when authController changes
+          final bool isAnonymous = authController.isAnonymousUser;
+          final String userName = authController.userName;
+          final String userEmail = authController.userEmail;
+
+          return SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -94,7 +97,7 @@ class _SettingsPageState extends State<SettingsPage>
                   iconColor: const Color(0xFF2196F3),
                   iconBg: const Color(0xFFE3F2FD),
                   title: isAnonymous ? "Complete profile" : "Edit profile",
-                  subtitle: isAnonymous 
+                  subtitle: isAnonymous
                     ? "Add name, email & password"
                     : "Update your personal info",
                   onTap: () => isAnonymous 
@@ -140,7 +143,8 @@ class _SettingsPageState extends State<SettingsPage>
               ),
             ],
           ),
-        ),
+          );
+        }),
       ),
     );
   }
