@@ -36,7 +36,6 @@ class _SignUpState extends State<SignUp> {
             height: 50
           ),
         ),
-        centerTitle: true,
       ),
       body: SingleChildScrollView(
         child: SafeArea(

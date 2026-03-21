@@ -34,7 +34,6 @@ class _LoginState extends State<Login> {
             height: 50
           ),
         ),
-        centerTitle: true,
       ),
       body: SingleChildScrollView(
         child: SafeArea(
