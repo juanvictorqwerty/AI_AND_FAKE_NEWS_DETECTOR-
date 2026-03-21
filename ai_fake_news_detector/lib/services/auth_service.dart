@@ -174,4 +174,180 @@ class AuthService extends GetxService {
       };
     }
   }
+
+  // Upgrade anonymous user to registered user
+  Future<Map<String, dynamic>> upgradeAnonymousUser({
+    required String token,
+    required String email,
+    required String password,
+    required String name,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/auth/upgrade-anonymous'),
+        body: jsonEncode({
+          'email': email,
+          'password': password,
+          'name': name,
+        }),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+      
+      if (response.body.isEmpty) {
+        return {'success': false, 'message': 'Server returned empty response. Status: ${response.statusCode}'};
+      }
+
+      final body = jsonDecode(response.body);
+
+      if (body['success'] == true) {
+        return {
+          'success': true,
+          'user': body['user'],
+          'token': body['token'],
+        };
+      } else {
+        return {
+          'success': false,
+          'message': body['message'] ?? 'Upgrade failed',
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Error: ${e.toString()}',
+      };
+    }
+  }
+
+  // Update user profile
+  Future<Map<String, dynamic>> updateProfile({
+    required String token,
+    String? name,
+    String? email,
+  }) async {
+    try {
+      final Map<String, dynamic> bodyData = {};
+      if (name != null) bodyData['name'] = name;
+      if (email != null) bodyData['email'] = email;
+
+      final response = await http.put(
+        Uri.parse('$baseUrl/auth/profile'),
+        body: jsonEncode(bodyData),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+      
+      if (response.body.isEmpty) {
+        return {'success': false, 'message': 'Server returned empty response. Status: ${response.statusCode}'};
+      }
+
+      final body = jsonDecode(response.body);
+
+      if (body['success'] == true) {
+        return {
+          'success': true,
+          'user': body['user'],
+        };
+      } else {
+        return {
+          'success': false,
+          'message': body['message'] ?? 'Update failed',
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Error: ${e.toString()}',
+      };
+    }
+  }
+
+  // Get current user profile
+  Future<Map<String, dynamic>> getProfile({required String token}) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/auth/profile'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+      
+      if (response.body.isEmpty) {
+        return {'success': false, 'message': 'Server returned empty response. Status: ${response.statusCode}'};
+      }
+
+      final body = jsonDecode(response.body);
+
+      if (body['success'] == true) {
+        return {
+          'success': true,
+          'user': body['user'],
+        };
+      } else {
+        return {
+          'success': false,
+          'message': body['message'] ?? 'Failed to get profile',
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Error: ${e.toString()}',
+      };
+    }
+  }
+
+  // Change password
+  Future<Map<String, dynamic>> changePassword({
+    required String token,
+    String? currentPassword,
+    required String newPassword,
+  }) async {
+    try {
+      final Map<String, dynamic> bodyData = {
+        'newPassword': newPassword,
+      };
+      if (currentPassword != null) {
+        bodyData['currentPassword'] = currentPassword;
+      }
+
+      final response = await http.put(
+        Uri.parse('$baseUrl/auth/change-password'),
+        body: jsonEncode(bodyData),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+      
+      if (response.body.isEmpty) {
+        return {'success': false, 'message': 'Server returned empty response. Status: ${response.statusCode}'};
+      }
+
+      final body = jsonDecode(response.body);
+
+      if (body['success'] == true) {
+        return {
+          'success': true,
+          'message': body['message'] ?? 'Password changed successfully',
+        };
+      } else {
+        return {
+          'success': false,
+          'message': body['message'] ?? 'Failed to change password',
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Error: ${e.toString()}',
+      };
+    }
+  }
 }

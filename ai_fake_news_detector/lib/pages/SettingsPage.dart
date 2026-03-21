@@ -61,6 +61,11 @@ class _SettingsPageState extends State<SettingsPage>
 
   @override
   Widget build(BuildContext context) {
+    final authController = Get.find<AuthController>();
+    final bool isAnonymous = authController.isAnonymous;
+    final String userName = authController.userName;
+    final String userEmail = authController.userEmail;
+
     return Scaffold(
       backgroundColor: const Color(0xFFF6F7FB),
       appBar: _buildAppBar(),
@@ -74,6 +79,38 @@ class _SettingsPageState extends State<SettingsPage>
               _sectionLabel("Account"),
               const SizedBox(height: 10),
               _buildCard([
+                // Profile info tile
+                _buildTile(
+                  icon: Icons.person_outline_rounded,
+                  iconColor: GlobalColors.mainColor,
+                  iconBg: GlobalColors.mainColor.withOpacity(0.1),
+                  title: userName,
+                  subtitle: isAnonymous ? "Anonymous user" : userEmail.isNotEmpty ? userEmail : "No email",
+                  onTap: () {},
+                ),
+                // Complete/Edit profile tile
+                _buildTile(
+                  icon: isAnonymous ? Icons.person_add_alt_1_rounded : Icons.edit_outlined,
+                  iconColor: const Color(0xFF2196F3),
+                  iconBg: const Color(0xFFE3F2FD),
+                  title: isAnonymous ? "Complete profile" : "Edit profile",
+                  subtitle: isAnonymous 
+                    ? "Add name, email & password"
+                    : "Update your personal info",
+                  onTap: () => isAnonymous 
+                    ? _showCompleteProfileDialog(context)
+                    : _showEditProfileDialog(context),
+                ),
+                // Password tile - only for non-anonymous users
+                if (!isAnonymous)
+                  _buildTile(
+                    icon: Icons.lock_outline_rounded,
+                    iconColor: const Color(0xFF9C27B0),
+                    iconBg: const Color(0xFFF3E5F5),
+                    title: "Change password",
+                    subtitle: "Update your account password",
+                    onTap: () => _showChangePasswordDialog(context),
+                  ),
                 _buildTile(
                   icon: Icons.logout_rounded,
                   iconColor: const Color(0xFFE53935),
@@ -350,6 +387,489 @@ class _SettingsPageState extends State<SettingsPage>
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  /// Shows dialog for anonymous users to complete their profile
+  void _showCompleteProfileDialog(BuildContext context) {
+    final nameController = TextEditingController();
+    final emailController = TextEditingController();
+    final passwordController = TextEditingController();
+    final confirmPasswordController = TextEditingController();
+    final authController = Get.find<AuthController>();
+    bool isLoading = false;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE3F2FD),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.person_add_alt_1_rounded,
+                        color: Color(0xFF2196F3), size: 28),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    "Complete Your Profile",
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF1A1A2E),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    "Create an account to save your data",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                  ),
+                  const SizedBox(height: 24),
+                  _buildTextField(
+                    controller: nameController,
+                    label: "Name",
+                    icon: Icons.person_outline,
+                  ),
+                  const SizedBox(height: 12),
+                  _buildTextField(
+                    controller: emailController,
+                    label: "Email",
+                    icon: Icons.email_outlined,
+                    keyboardType: TextInputType.emailAddress,
+                  ),
+                  const SizedBox(height: 12),
+                  _buildTextField(
+                    controller: passwordController,
+                    label: "Password",
+                    icon: Icons.lock_outline,
+                    obscureText: true,
+                  ),
+                  const SizedBox(height: 12),
+                  _buildTextField(
+                    controller: confirmPasswordController,
+                    label: "Confirm Password",
+                    icon: Icons.lock_outline,
+                    obscureText: true,
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: isLoading ? null : () => Navigator.pop(context),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 13),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
+                            side: BorderSide(color: Colors.grey[300]!),
+                          ),
+                          child: const Text("Cancel",
+                              style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF1A1A2E))),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: isLoading
+                              ? null
+                              : () async {
+                                  // Validate inputs
+                                  if (nameController.text.isEmpty ||
+                                      emailController.text.isEmpty ||
+                                      passwordController.text.isEmpty) {
+                                    Get.snackbar('Error', 'Please fill in all fields');
+                                    return;
+                                  }
+                                  if (passwordController.text !=
+                                      confirmPasswordController.text) {
+                                    Get.snackbar('Error', 'Passwords do not match');
+                                    return;
+                                  }
+                                  if (passwordController.text.length < 6) {
+                                    Get.snackbar('Error',
+                                        'Password must be at least 6 characters');
+                                    return;
+                                  }
+
+                                  setState(() => isLoading = true);
+
+                                  final success =
+                                      await authController.upgradeAnonymousUser(
+                                    name: nameController.text.trim(),
+                                    email: emailController.text.trim(),
+                                    password: passwordController.text,
+                                  );
+
+                                  setState(() => isLoading = false);
+
+                                  if (success && context.mounted) {
+                                    Navigator.pop(context);
+                                  }
+                                },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF2196F3),
+                            padding: const EdgeInsets.symmetric(vertical: 13),
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
+                          ),
+                          child: isLoading
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Text("Create Account",
+                                  style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Shows dialog for registered users to edit their profile
+  void _showEditProfileDialog(BuildContext context) {
+    final authController = Get.find<AuthController>();
+    final nameController = TextEditingController(text: authController.userName);
+    final emailController = TextEditingController(text: authController.userEmail);
+    bool isLoading = false;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE3F2FD),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.edit_outlined,
+                        color: Color(0xFF2196F3), size: 28),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    "Edit Profile",
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF1A1A2E),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    "Update your personal information",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                  ),
+                  const SizedBox(height: 24),
+                  _buildTextField(
+                    controller: nameController,
+                    label: "Name",
+                    icon: Icons.person_outline,
+                  ),
+                  const SizedBox(height: 12),
+                  _buildTextField(
+                    controller: emailController,
+                    label: "Email",
+                    icon: Icons.email_outlined,
+                    keyboardType: TextInputType.emailAddress,
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: isLoading ? null : () => Navigator.pop(context),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 13),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
+                            side: BorderSide(color: Colors.grey[300]!),
+                          ),
+                          child: const Text("Cancel",
+                              style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF1A1A2E))),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: isLoading
+                              ? null
+                              : () async {
+                                  // Validate inputs
+                                  if (nameController.text.isEmpty ||
+                                      emailController.text.isEmpty) {
+                                    Get.snackbar('Error', 'Please fill in all fields');
+                                    return;
+                                  }
+
+                                  setState(() => isLoading = true);
+
+                                  final success = await authController.updateProfile(
+                                    name: nameController.text.trim(),
+                                    email: emailController.text.trim(),
+                                  );
+
+                                  setState(() => isLoading = false);
+
+                                  if (success && context.mounted) {
+                                    Navigator.pop(context);
+                                    // Refresh UI
+                                    this.setState(() {});
+                                  }
+                                },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF2196F3),
+                            padding: const EdgeInsets.symmetric(vertical: 13),
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
+                          ),
+                          child: isLoading
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Text("Save Changes",
+                                  style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Shows dialog for changing password (for registered users)
+  void _showChangePasswordDialog(BuildContext context) {
+    final authController = Get.find<AuthController>();
+    final currentPasswordController = TextEditingController();
+    final newPasswordController = TextEditingController();
+    final confirmPasswordController = TextEditingController();
+    bool isLoading = false;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF3E5F5),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.lock_outline_rounded,
+                        color: Color(0xFF9C27B0), size: 28),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    "Change Password",
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF1A1A2E),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    "Enter your current and new password",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                  ),
+                  const SizedBox(height: 24),
+                  _buildTextField(
+                    controller: currentPasswordController,
+                    label: "Current Password",
+                    icon: Icons.lock_outline,
+                    obscureText: true,
+                  ),
+                  const SizedBox(height: 12),
+                  _buildTextField(
+                    controller: newPasswordController,
+                    label: "New Password",
+                    icon: Icons.lock_outline,
+                    obscureText: true,
+                  ),
+                  const SizedBox(height: 12),
+                  _buildTextField(
+                    controller: confirmPasswordController,
+                    label: "Confirm New Password",
+                    icon: Icons.lock_outline,
+                    obscureText: true,
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: isLoading ? null : () => Navigator.pop(context),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 13),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
+                            side: BorderSide(color: Colors.grey[300]!),
+                          ),
+                          child: const Text("Cancel",
+                              style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF1A1A2E))),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: isLoading
+                              ? null
+                              : () async {
+                                  if (currentPasswordController.text.isEmpty ||
+                                      newPasswordController.text.isEmpty ||
+                                      confirmPasswordController.text.isEmpty) {
+                                    Get.snackbar("Error", "Please fill in all fields");
+                                    return;
+                                  }
+                                  if (newPasswordController.text !=
+                                      confirmPasswordController.text) {
+                                    Get.snackbar("Error", "New passwords do not match");
+                                    return;
+                                  }
+                                  if (newPasswordController.text.length < 6) {
+                                    Get.snackbar("Error",
+                                        "Password must be at least 6 characters");
+                                    return;
+                                  }
+                                  setState(() => isLoading = true);
+                                  final success = await authController.changePassword(
+                                    currentPassword: currentPasswordController.text,
+                                    newPassword: newPasswordController.text,
+                                  );
+                                  setState(() => isLoading = false);
+                                  if (success && context.mounted) {
+                                    Navigator.pop(context);
+                                  }
+                                },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF9C27B0),
+                            padding: const EdgeInsets.symmetric(vertical: 13),
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
+                          ),
+                          child: isLoading
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Text("Change Password",
+                                  style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Helper widget for text fields in dialogs
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    TextInputType? keyboardType,
+    bool obscureText = false,
+  }) {
+    return TextField(
+      controller: controller,
+      keyboardType: keyboardType,
+      obscureText: obscureText,
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon, color: Colors.grey[400]),
+        filled: true,
+        fillColor: Colors.grey[50],
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: GlobalColors.mainColor, width: 1.5),
+        ),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       ),
     );
   }
