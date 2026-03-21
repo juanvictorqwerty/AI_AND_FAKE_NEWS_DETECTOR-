@@ -1,0 +1,56 @@
+name: Auto Merge Test to Main
+
+on:
+  pull_request:
+    types:
+      - closed
+    branches:
+      - test
+
+jobs:
+  auto-merge-to-main:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Install GitHub CLI
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gh
+
+      - name: Merge Test to Main
+        id: merge_main
+        continue-on-error: true
+        run: |
+          git checkout main
+          
+          # Try to merge test into main
+          if git merge test --no-ff -m "Auto-merge test into main (PR #${{ github.event.pull_request.number }})"; then
+            git push origin main
+            echo "status=success" >> $GITHUB_OUTPUT
+          else
+            echo "status=conflict" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+      - name: Notify on Conflict
+        if: steps.merge_main.outcome == 'failure'
+        run: |
+          echo "::error::Merge conflict: test → main requires manual resolution"
+          gh pr comment ${{ github.event.pull_request.number }} \
+            --body "⚠️ Auto-merge to \`main\` failed due to conflicts. Please resolve manually."
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
