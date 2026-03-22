@@ -67,7 +67,7 @@ class FactCheckResultWidget extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              result.claimText,
+              result.claim,
               style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w500,
@@ -129,7 +129,7 @@ class FactCheckResultWidget extends StatelessWidget {
             const SizedBox(height: 16),
 
             // Sources
-            if (result.webSearchResults.isNotEmpty) ...[
+            if (result.sources.isNotEmpty) ...[
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -154,9 +154,9 @@ class FactCheckResultWidget extends StatelessWidget {
               ListView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                itemCount: result.webSearchResults.length,
+                itemCount: result.sources.length,
                 itemBuilder: (context, index) {
-                  final source = result.webSearchResults[index];
+                  final source = result.sources[index];
                   return _SourceTile(
                     source: source,
                     onTap: () => _launchUrl(source.url),
