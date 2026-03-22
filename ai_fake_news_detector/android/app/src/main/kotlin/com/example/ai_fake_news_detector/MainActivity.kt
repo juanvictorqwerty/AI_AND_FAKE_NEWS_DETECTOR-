@@ -11,6 +11,7 @@ import io.flutter.plugin.common.MethodChannel
 class MainActivity : FlutterActivity() {
 
     private val CHANNEL = "android_intent/android_intent"
+    private val QUICK_SETTINGS_CHANNEL = "com.example.ai_fake_news_detector/quick_settings"
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -65,6 +66,24 @@ class MainActivity : FlutterActivity() {
                         }
                     }
 
+                    else -> result.notImplemented()
+                }
+            }
+        
+        // Quick Settings Tile MethodChannel
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, QUICK_SETTINGS_CHANNEL)
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "getTileState" -> {
+                        val tileService = QuickSettingsTileService.getInstance()
+                        val isActive = tileService?.qsTile?.state == android.service.quicksettings.Tile.STATE_ACTIVE
+                        result.success(isActive)
+                    }
+                    "updateTile" -> {
+                        val tileService = QuickSettingsTileService.getInstance()
+                        tileService?.qsTile?.updateTile()
+                        result.success(true)
+                    }
                     else -> result.notImplemented()
                 }
             }
