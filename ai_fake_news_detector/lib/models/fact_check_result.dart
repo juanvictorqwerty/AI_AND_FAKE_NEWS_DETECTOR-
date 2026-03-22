@@ -38,12 +38,39 @@ class WebSearchResult {
   }
 }
 
+class Verdict {
+  final String verdict;
+  final String confidence;
+  final String reason;
+
+  Verdict({
+    required this.verdict,
+    required this.confidence,
+    required this.reason,
+  });
+
+  factory Verdict.fromJson(Map<String, dynamic> json) {
+    return Verdict(
+      verdict: json['verdict'] ?? 'unverified',
+      confidence: json['confidence'] ?? 'low',
+      reason: json['reason'] ?? '',
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'verdict': verdict,
+        'confidence': confidence,
+        'reason': reason,
+      };
+}
+
 class FactCheckResult {
   final bool success;
   final String claim;
   final String type;
   final String searchQuery;
   final List<WebSearchResult> sources;
+  final Verdict? verdict;
 
   FactCheckResult({
     required this.success,
@@ -51,6 +78,7 @@ class FactCheckResult {
     required this.type,
     required this.searchQuery,
     required this.sources,
+    this.verdict,
   });
 
   factory FactCheckResult.fromJson(Map<String, dynamic> json) {
@@ -64,6 +92,9 @@ class FactCheckResult {
                   WebSearchResult.fromJson(item as Map<String, dynamic>))
               .toList() ??
           [],
+      verdict: json['verdict'] != null
+          ? Verdict.fromJson(json['verdict'] as Map<String, dynamic>)
+          : null,
     );
   }
 
@@ -74,24 +105,30 @@ class FactCheckResult {
       'type': type,
       'searchQuery': searchQuery,
       'sources': sources.map((item) => item.toJson()).toList(),
+      'verdict': verdict?.toJson(),
     };
   }
 
-  // Helper getter to determine verdict based on type
   String get combinedVerdict {
-    switch (type.toLowerCase()) {
-      case 'true':
-        return 'true';
-      case 'false':
-        return 'false';
-      case 'controversial':
-      case 'unverified':
-      default:
-        return 'unverified';
+    if (verdict != null) {
+      return verdict!.verdict.toLowerCase();
+    }
+
+    // Fallback to type-inference if verdict is missing
+    final lowerType = type.toLowerCase();
+    if (lowerType.contains('true') ||
+        lowerType.contains('verified') ||
+        lowerType.contains('correct')) {
+      return 'true';
+    } else if (lowerType.contains('false') ||
+        lowerType.contains('debunked') ||
+        lowerType.contains('incorrect')) {
+      return 'false';
+    } else {
+      return 'unverified';
     }
   }
 
-  // Helper getter for evidence summary
   String get evidenceSummary {
     if (sources.isEmpty) {
       return 'No sources found for this claim.';
@@ -100,6 +137,5 @@ class FactCheckResult {
         'The claim appears to be ${type.toLowerCase()}.';
   }
 
-  // Helper getter for total sources
   int get totalSources => sources.length;
 }
