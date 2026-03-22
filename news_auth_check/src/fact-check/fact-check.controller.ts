@@ -11,12 +11,13 @@ import {
 import type { Request } from 'express';
 import { WebScraperService } from './web-scraper.service';
 import { SearchQueryService } from './search-query.service';
+import { VerdictAnalysisService, VerdictResult } from './verdict-analysis.service';
 import { SearchSourceDto, ClaimType } from './dto';
 import { JwtAuthGuard } from '../auth/auth.guard';
 
 /**
  * Controller for fact-checking endpoints
- * Provides API endpoints to verify claims using web search
+ * Provides API endpoints to verify claims using web search with verdict analysis
  * 
  * Only /fact-check/search endpoint is available.
  * Requires JWT authentication.
@@ -30,12 +31,12 @@ export class FactCheckController {
     constructor(
         private readonly webScraperService: WebScraperService,
         private readonly searchQueryService: SearchQueryService,
+        private readonly verdictAnalysisService: VerdictAnalysisService,
     ) {}
 
     /**
      * POST /fact-check/search
-     * Search the web for fact-check sources
-     * Returns search results with claim classification
+     * Search the web for fact-check sources and analyze verdict
      * 
      * Example Request:
      * POST /fact-check/search
@@ -50,16 +51,13 @@ export class FactCheckController {
      *   "claim": "the strait of hormuz is closed",
      *   "type": "news",
      *   "searchQuery": "strait of hormuz closed news report",
-     *   "results": [
-     *     {
-     *       "title": "...",
-     *       "url": "...",
-     *       "date": "...",
-     *       "snippet": "...",
-     *       "publisher": "...",
-     *       "isTrusted": true
-     *     }
-     *   ]
+     *   "sources": [...],
+     *   "verdict": {
+     *     "verdict": "unverified",
+     *     "confidence": "low",
+     *     "reason": "No definitive sources found to verify or refute this claim.",
+     *     "usedSources": [...]
+     *   }
      * }
      */
     @Post('search')
@@ -72,7 +70,8 @@ export class FactCheckController {
         claim: string;
         type: ClaimType;
         searchQuery: string;
-        results: SearchSourceDto[];
+        sources: SearchSourceDto[];
+        verdict: VerdictResult;
     }> {
         const user = (req as any).user;
         this.logger.log(`Received search request from user: ${user?.userId || 'unknown'}`);
@@ -83,14 +82,18 @@ export class FactCheckController {
         const queryResult = this.searchQueryService.classifyAndGenerateQuery(claim);
         
         // Search using the optimized query
-        const results = await this.webScraperService.searchWeb(queryResult.searchQuery);
+        const sources = await this.webScraperService.searchWeb(queryResult.searchQuery);
+        
+        // Analyze verdict based on sources
+        const verdict = this.verdictAnalysisService.analyzeVerdict(claim, sources);
         
         return {
             success: true,
             claim: claim,
             type: queryResult.type,
             searchQuery: queryResult.searchQuery,
-            results,
+            sources,
+            verdict,
         };
     }
 }
