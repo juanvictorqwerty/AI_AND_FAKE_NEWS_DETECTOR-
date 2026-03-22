@@ -98,6 +98,7 @@ export class FactCheckService {
                     sourceUrl: '',
                     reviewDate: '',
                     textualRating: 'No fact-check available for this claim',
+                    evidenceSummary: 'We could not find any fact-check reviews for this claim. This does not mean the claim is true or false, just that it has not been reviewed by fact-checking organizations yet.',
                     totalReviews: 0,
                     message: 'No fact-check results found for this claim',
                 };
@@ -110,6 +111,9 @@ export class FactCheckService {
 
             this.logger.log(`Found ${reviews.length} fact-check reviews`);
 
+            // Generate user-friendly evidence summary
+            const evidenceSummary = this.generateEvidenceSummary(firstClaim, reviews);
+
             return {
                 success: true,
                 claimText: firstClaim.text || claim,
@@ -118,6 +122,7 @@ export class FactCheckService {
                 sourceUrl: topReview.url,
                 reviewDate: topReview.reviewDate,
                 textualRating: topReview.textualRating,
+                evidenceSummary,
                 claimant: firstClaim.claimant,
                 claimDate: firstClaim.claimDate,
                 totalReviews: reviews.length,
@@ -145,7 +150,8 @@ export class FactCheckService {
     }
 
     /**
-     * Map textual rating to standardized status
+     * Map textual rating to standardized status (true / false / unverified)
+     * Uses comprehensive keyword matching to determine verdict
      */
     private mapTextualRatingToStatus(
         textualRating: string | undefined,
@@ -156,40 +162,122 @@ export class FactCheckService {
 
         const rating = textualRating.toLowerCase();
 
-        // True ratings
-        if (
-            rating.includes('true') &&
-            !rating.includes('false') &&
-            !rating.includes('partly')
-        ) {
-            return ClaimReviewStatus.TRUE;
+        // FALSE indicators - comprehensive list of false/untrue ratings
+        const falseIndicators = [
+            'false', 'fake', 'incorrect', 'not true', 'misleading',
+            'untrue', 'fabricated', 'hoax', 'fiction', 'wrong',
+            'inaccurate', 'debunked', 'no evidence', 'baseless',
+            'contradicted', 'refuted', 'disproven', 'pants on fire',
+            'mostly false', 'four pinocchios', 'not accurate',
+        ];
+
+        // TRUE indicators - comprehensive list of true/correct ratings
+        const trueIndicators = [
+            'true', 'correct', 'accurate', 'confirmed', 'verified',
+            'authentic', 'genuine', 'real', 'substantiated',
+            'mostly true', 'true but', 'largely accurate',
+        ];
+
+        // Check for false indicators first (more specific)
+        for (const indicator of falseIndicators) {
+            if (rating.includes(indicator)) {
+                // Make sure it's not a negation like "not false" = true
+                if (!this.isNegated(rating, indicator)) {
+                    return ClaimReviewStatus.FALSE;
+                }
+            }
         }
 
-        // False ratings
-        if (
-            rating.includes('false') &&
-            !rating.includes('true') &&
-            !rating.includes('partly')
-        ) {
-            return ClaimReviewStatus.FALSE;
-        }
-
-        // Mixed/Partly true ratings
-        if (
-            rating.includes('mixed') ||
-            rating.includes('partly') ||
-            rating.includes('partial') ||
-            (rating.includes('true') && rating.includes('false'))
-        ) {
-            return ClaimReviewStatus.MIXED;
-        }
-
-        // Partly true specific
-        if (rating.includes('partly true')) {
-            return ClaimReviewStatus.PARTLY_TRUE;
+        // Check for true indicators
+        for (const indicator of trueIndicators) {
+            if (rating.includes(indicator)) {
+                // Make sure it's not a negation like "not true" = false
+                if (!this.isNegated(rating, indicator)) {
+                    return ClaimReviewStatus.TRUE;
+                }
+            }
         }
 
         return ClaimReviewStatus.UNVERIFIED;
+    }
+
+    /**
+     * Check if a keyword is negated in the rating text
+     * e.g., "not true" should not match as true
+     */
+    private isNegated(text: string, keyword: string): boolean {
+        const negations = ['not', 'no', 'never', "n't", 'hardly', 'barely', 'scarcely'];
+        const index = text.indexOf(keyword);
+        
+        if (index === -1) return false;
+
+        // Check the 20 characters before the keyword for negations
+        const beforeText = text.substring(Math.max(0, index - 20), index);
+        return negations.some(neg => beforeText.includes(neg));
+    }
+
+    /**
+     * Generate a user-friendly summary of the fact-check evidence
+     */
+    private generateEvidenceSummary(
+        claim: GoogleClaim,
+        reviews: ClaimReviewDto[],
+    ): string {
+        if (!reviews || reviews.length === 0) {
+            return 'No fact-check reviews available for this claim.';
+        }
+
+        const mainReview = reviews[0];
+        const status = mainReview.status;
+        const publisher = mainReview.publisher;
+        
+        // Build summary based on status
+        let summary = '';
+        
+        if (status === ClaimReviewStatus.FALSE) {
+            summary = `This claim has been rated as **FALSE** by ${publisher}. `;
+            summary += this.extractKeyEvidence(mainReview.textualRating);
+        } else if (status === ClaimReviewStatus.TRUE) {
+            summary = `This claim has been verified as **TRUE** by ${publisher}. `;
+            summary += this.extractKeyEvidence(mainReview.textualRating);
+        } else {
+            summary = `${publisher} reviewed this claim. `;
+            summary += this.extractKeyEvidence(mainReview.textualRating);
+        }
+
+        // Add multiple sources note if applicable
+        if (reviews.length > 1) {
+            const otherPublishers = reviews
+                .slice(1, 3)
+                .map(r => r.publisher)
+                .join(', ');
+            summary += ` Additional verification from ${otherPublishers}.`;
+        }
+
+        return summary;
+    }
+
+    /**
+     * Extract and clean key evidence from textual rating
+     */
+    private extractKeyEvidence(textualRating: string): string {
+        if (!textualRating) return '';
+
+        // Clean up the evidence text
+        let evidence = textualRating
+            .replace(/\s+/g, ' ')
+            .trim();
+
+        // If too long, truncate intelligently
+        if (evidence.length > 200) {
+            const sentences = evidence.match(/[^.!?]+[.!?]+/g) || [evidence];
+            evidence = sentences.slice(0, 2).join(' ').trim();
+            if (evidence.length > 200) {
+                evidence = evidence.substring(0, 197) + '...';
+            }
+        }
+
+        return evidence;
     }
 
     /**

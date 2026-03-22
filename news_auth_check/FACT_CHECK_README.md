@@ -73,6 +73,18 @@ pnpm start:prod
 
 ## API Usage
 
+### Authentication
+
+All fact-check endpoints require a valid JWT token. Include the token in the Authorization header:
+
+```
+Authorization: Bearer <your-jwt-token>
+```
+
+The token is validated against the database to ensure:
+- Token is not expired
+- Token has not been revoked (logged out)
+
 ### Endpoint
 
 ```
@@ -100,6 +112,7 @@ POST /fact-check
 ```bash
 curl -X POST http://localhost:4000/fact-check \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <your-jwt-token>" \
   -d '{
     "claim": "The Earth is flat",
     "languageCode": "en"
@@ -133,28 +146,21 @@ console.log(result);
   "success": true,
   "claimText": "The Earth is flat",
   "status": "false",
-  "source": "Snopes",
-  "sourceUrl": "https://www.snopes.com/fact-check/earth-flat/",
-  "reviewDate": "2023-01-15",
-  "textualRating": "False",
+  "source": "Full Fact",
+  "sourceUrl": "https://fullfact.org/online/earth-is-spherical-not-flat/",
+  "reviewDate": "2023-03-03T00:00:00Z",
+  "textualRating": "We have abundant evidence going back thousands of years that the Earth is roughly spherical.",
+  "evidenceSummary": "This claim has been rated as FALSE by Full Fact. We have abundant evidence going back thousands of years that the Earth is roughly spherical.",
   "claimant": "Flat Earth Society",
   "claimDate": "2023-01-01",
-  "totalReviews": 3,
+  "totalReviews": 1,
   "allReviews": [
     {
-      "publisher": "Snopes",
-      "url": "https://www.snopes.com/fact-check/earth-flat/",
-      "title": "Is the Earth Flat?",
-      "reviewDate": "2023-01-15",
-      "textualRating": "False",
-      "status": "false"
-    },
-    {
-      "publisher": "FactCheck.org",
-      "url": "https://www.factcheck.org/earth-shape/",
-      "title": "Earth Shape Facts",
-      "reviewDate": "2023-01-10",
-      "textualRating": "False",
+      "publisher": "Full Fact",
+      "url": "https://fullfact.org/online/earth-is-spherical-not-flat/",
+      "title": "The Earth is not flat – Full Fact",
+      "reviewDate": "2023-03-03T00:00:00Z",
+      "textualRating": "We have abundant evidence going back thousands of years that the Earth is roughly spherical.",
       "status": "false"
     }
   ]
@@ -172,6 +178,7 @@ console.log(result);
   "sourceUrl": "",
   "reviewDate": "",
   "textualRating": "No fact-check available for this claim",
+  "evidenceSummary": "We could not find any fact-check reviews for this claim. This does not mean the claim is true or false, just that it has not been reviewed by fact-checking organizations yet.",
   "totalReviews": 0,
   "message": "No fact-check results found for this claim"
 }
@@ -183,11 +190,12 @@ console.log(result);
 |-------|------|-------------|
 | `success` | boolean | Whether the request was successful |
 | `claimText` | string | The claim that was fact-checked |
-| `status` | string | Review status: `true`, `false`, `mixed`, `partly_true`, or `unverified` |
+| `status` | string | Review status: `true`, `false`, or `unverified` |
 | `source` | string | Name of the fact-checking organization |
 | `sourceUrl` | string | URL to the fact-check article |
 | `reviewDate` | string | Date when the claim was reviewed |
 | `textualRating` | string | Original textual rating from the source |
+| `evidenceSummary` | string | **Auto-generated user-friendly summary** of the evidence |
 | `claimant` | string | Who made the claim (if available) |
 | `claimDate` | string | When the claim was made (if available) |
 | `totalReviews` | number | Total number of fact-check reviews found |
@@ -196,17 +204,43 @@ console.log(result);
 
 ## Status Values
 
-The API returns standardized status values:
+The API analyzes fact-check verdicts and returns standardized status values:
 
-| Status | Description |
-|--------|-------------|
-| `true` | The claim is true |
-| `false` | The claim is false |
-| `mixed` | The claim contains both true and false elements |
-| `partly_true` | The claim is partially true |
-| `unverified` | No fact-check available or inconclusive |
+| Status | Description | Keyword Examples |
+|--------|-------------|------------------|
+| `true` | The claim is verified as accurate | "True", "Correct", "Verified", "Confirmed" |
+| `false` | The claim is rated as false/misleading | "False", "Fake", "Incorrect", "Debunked", "Pants on Fire", "No evidence" |
+| `unverified` | No fact-check available or inconclusive | "Unproven", "No reviews found", or unclear verdict |
+
+### How Status is Determined
+
+The API uses intelligent text analysis on the fact-check's textual rating to determine the status:
+
+- **False indicators**: "false", "fake", "incorrect", "misleading", "untrue", "fabricated", "hoax", "fiction", "wrong", "inaccurate", "debunked", "baseless", "refuted", "pants on fire", "mostly false"
+- **True indicators**: "true", "correct", "accurate", "confirmed", "verified", "authentic", "genuine", "real", "substantiated", "mostly true"
+- **Negation handling**: The API correctly handles negations like "not true" (false) vs "true" (true)
 
 ## Error Handling
+
+### Unauthorized (401) - No Token
+
+```json
+{
+  "message": "No token provided",
+  "error": "Unauthorized",
+  "statusCode": 401
+}
+```
+
+### Unauthorized (401) - Invalid or Revoked Token
+
+```json
+{
+  "message": "Invalid or revoked token",
+  "error": "Unauthorized",
+  "statusCode": 401
+}
+```
 
 ### Invalid API Key (403)
 

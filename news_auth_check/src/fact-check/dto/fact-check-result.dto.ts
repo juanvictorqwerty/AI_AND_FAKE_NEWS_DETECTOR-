@@ -43,6 +43,7 @@ export class FactCheckResultDto {
     sourceUrl: string;
     reviewDate: string;
     textualRating: string;
+    evidenceSummary: string;
     claimant?: string;
     claimDate?: string;
     totalReviews: number;
