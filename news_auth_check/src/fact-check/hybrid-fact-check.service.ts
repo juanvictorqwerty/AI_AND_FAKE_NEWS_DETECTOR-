@@ -121,33 +121,76 @@ export class HybridFactCheckService {
 
     /**
      * Analyze web search results to determine a verdict
+     * Distinguishes between factual claims and news queries
      */
     private analyzeWebResults(results: SearchSourceDto[]): 'true' | 'false' | 'unverified' | 'inconclusive' {
-        // Count results by implied verdict based on keywords in snippets
+        if (results.length === 0) return 'unverified';
+
+        // Combine all text for analysis
+        const allText = results.map(r => 
+            `${r.title} ${r.snippet}`.toLowerCase()
+        ).join(' ');
+
+        // Check for factual claim keywords
+        const factualKeywords = [
+            'is', 'are', 'was', 'were', 'true', 'false', 
+            'fact', 'myth', 'debunked', 'verified', 'confirmed',
+            'fake', 'hoax', 'lie', 'correct', 'incorrect'
+        ];
+
+        // Check for news/event keywords
+        const newsKeywords = [
+            'news', 'report', 'said', 'according to', 'officials',
+            'announced', 'statement', 'update', 'latest', 'developing'
+        ];
+
+        const isFactualClaim = factualKeywords.some(kw => allText.includes(kw));
+        const isNewsQuery = newsKeywords.some(kw => allText.includes(kw));
+
+        // For factual claims, look for explicit verdicts
+        if (isFactualClaim && !isNewsQuery) {
+            return this.analyzeFactualClaim(results);
+        }
+
+        // For news queries, return informative verdict
+        if (isNewsQuery || results.length > 0) {
+            return 'inconclusive'; // News is informative, not true/false
+        }
+
+        return 'unverified';
+    }
+
+    /**
+     * Analyze results for factual claims
+     */
+    private analyzeFactualClaim(results: SearchSourceDto[]): 'true' | 'false' | 'inconclusive' {
         let trueCount = 0;
         let falseCount = 0;
-        let unverifiedCount = 0;
 
-        const trueKeywords = ['true', 'confirmed', 'verified', 'correct', 'accurate'];
-        const falseKeywords = ['false', 'fake', 'debunked', 'misinformation', 'hoax', 'incorrect'];
+        const trueIndicators = [
+            'true', 'verified', 'confirmed', 'correct', 'accurate',
+            'fact', 'myth confirmed', 'debunked false'
+        ];
+        const falseIndicators = [
+            'false', 'fake', 'debunked', 'myth', 'hoax', 'lie',
+            'incorrect', 'untrue', 'not true', 'not accurate'
+        ];
 
         for (const result of results) {
-            const snippet = (result.snippet + ' ' + result.title).toLowerCase();
+            const text = `${result.title} ${result.snippet}`.toLowerCase();
             
-            // Check for fact-check sites with definitive answers
             if (result.isTrusted) {
-                if (falseKeywords.some(k => snippet.includes(k))) {
-                    falseCount += 2; // Weight trusted sources higher
-                } else if (trueKeywords.some(k => snippet.includes(k))) {
-                    trueCount += 2;
-                }
+                // Weight trusted sources more heavily
+                if (trueIndicators.some(i => text.includes(i))) trueCount += 2;
+                if (falseIndicators.some(i => text.includes(i))) falseCount += 2;
+            } else {
+                if (trueIndicators.some(i => text.includes(i))) trueCount += 1;
+                if (falseIndicators.some(i => text.includes(i))) falseCount += 1;
             }
         }
 
-        // Determine verdict based on weighted counts
         if (falseCount > trueCount * 1.5) return 'false';
         if (trueCount > falseCount * 1.5) return 'true';
-        if (trueCount === 0 && falseCount === 0) return 'unverified';
         return 'inconclusive';
     }
 
