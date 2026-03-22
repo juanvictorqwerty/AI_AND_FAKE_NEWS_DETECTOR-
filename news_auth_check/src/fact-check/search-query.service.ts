@@ -1,7 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-
-// Claim type classification
-export type ClaimType = 'fact' | 'news' | 'controversial';
+import { ClaimType } from './dto';
 
 // Result interface
 export interface QueryGenerationResult {

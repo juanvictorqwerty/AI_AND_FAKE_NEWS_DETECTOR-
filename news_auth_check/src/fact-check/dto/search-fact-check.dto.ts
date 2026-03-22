@@ -1,5 +1,8 @@
 import { IsString, IsNotEmpty, MaxLength, IsOptional, IsArray } from 'class-validator';
 
+// Claim type for classification
+export type ClaimType = 'fact' | 'news' | 'controversial';
+
 /**
  * DTO for search-based fact-check request
  */
