@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:ai_fake_news_detector/models/fact_check_result.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'dart:io';
 
 class FactCheckResultWidget extends StatelessWidget {
   final FactCheckResult result;
@@ -34,12 +35,41 @@ class FactCheckResultWidget extends StatelessWidget {
     }
   }
 
-  Future<void> _launchUrl(String url) async {
-    final uri = Uri.parse(url);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } else {
-      throw 'Could not launch $url';
+  Future<void> _launchUrl(BuildContext context, String url) async {
+    try {
+      final uri = Uri.parse(url);
+      
+      // Try to launch the URL
+      bool launched = false;
+      
+      if (Platform.isAndroid) {
+        // On Android, try to launch with external application mode
+        launched = await launchUrl(
+          uri,
+          mode: LaunchMode.externalApplication,
+        );
+      } else {
+        // On other platforms, use platform default
+        launched = await launchUrl(uri);
+      }
+      
+      if (!launched && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not open link: $url'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error opening link: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -159,7 +189,7 @@ class FactCheckResultWidget extends StatelessWidget {
                   final source = result.sources[index];
                   return _SourceTile(
                     source: source,
-                    onTap: () => _launchUrl(source.url),
+                    onTap: () => _launchUrl(context, source.url),
                   );
                 },
               ),
