@@ -184,14 +184,20 @@ export class WebScraperService {
     async searchWebWithFallback(claim: string): Promise<SearchSourceDto[]> {
         this.logger.log(`Searching web for: "${claim}"`);
         
-        // Use SerpAPI directly
+        // Generate optimized search query
         const searchQuery = this.searchQueryService.generateSearchQuery(claim);
+        this.logger.log(`Optimized query: "${searchQuery}"`);
+        
+        // Use SerpAPI via searchWeb
         const results = await this.searchWeb(searchQuery);
         
-        this.logger.log(`Found ${results.length} search results`);
+        this.logger.log(`Found ${results.length} total results`);
         
         // Sort by trust score
-        return this.sortByTrustworthiness(results).slice(0, 10);
+        const sortedResults = this.sortByTrustworthiness(results);
+        this.logger.log(`Returning ${sortedResults.length} results after sorting`);
+        
+        return sortedResults.slice(0, 10);
     }
 
     /**
