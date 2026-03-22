@@ -1,7 +1,7 @@
 import 'package:ai_fake_news_detector/pages/LoginScreen.dart';
 import 'package:ai_fake_news_detector/pages/HomePage.dart';
 import 'package:ai_fake_news_detector/utils/global.colors.dart';
-import 'package:ai_fake_news_detector/widgets/auth_button.global.dart';
+import 'package:ai_fake_news_detector/widgets/big_button.global.dart';
 import 'package:ai_fake_news_detector/widgets/text.form.global.dart';
 import 'package:ai_fake_news_detector/services/auth_controller.dart';
 import 'package:get/get.dart';
@@ -97,7 +97,7 @@ class _SignUpState extends State<SignUp> {
 
                 const SizedBox(height: 10),
 
-                AuthButton(
+                BigButton(
                   text: 'Sign Up',
                   color: GlobalColors.mainColor,
                   isLoading: _isLoading,

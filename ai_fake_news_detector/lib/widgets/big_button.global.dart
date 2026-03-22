@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 
-class AuthButton extends StatelessWidget {
+class BigButton extends StatelessWidget {
   final String text;
   final VoidCallback? onTap;
   final Color color;
   final bool isLoading;
 
-  const AuthButton({
+  const BigButton({
     super.key,
     required this.text,
     required this.onTap,

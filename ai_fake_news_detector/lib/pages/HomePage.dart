@@ -1,7 +1,9 @@
 
+import 'package:ai_fake_news_detector/pages/FactCheckPage.dart';
 import 'package:ai_fake_news_detector/pages/SettingsPage.dart';
 import 'package:ai_fake_news_detector/services/auth_controller.dart';
 import 'package:ai_fake_news_detector/utils/global.colors.dart';
+import 'package:ai_fake_news_detector/widgets/big_button.global.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -68,7 +70,16 @@ class _HomepageState extends State<Homepage> {
                   mainAxisAlignment:MainAxisAlignment.center ,
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    Text("Hello world")
+                    BigButton(
+                      text: "Fact Check", 
+                      onTap: (){
+                        Navigator.push(
+                          context, 
+                          MaterialPageRoute(builder:(context)=>const FactCheckPage()),
+                          );
+                      }, 
+                      color: Colors.green
+                    )
                   ],
                 ),
             )
