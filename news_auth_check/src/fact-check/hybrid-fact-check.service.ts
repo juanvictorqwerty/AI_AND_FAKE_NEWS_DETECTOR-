@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { FactCheckService } from './fact-check.service';
 import { WebScraperService } from './web-scraper.service';
-import { SearchQueryService } from './search-query.service';
+import { SearchQueryService, ClaimType } from './search-query.service';
 import {
     HybridFactCheckDto,
     SearchFactCheckResultDto,

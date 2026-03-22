@@ -37,6 +37,7 @@ export class SearchSourceDto {
 export class SearchFactCheckResultDto {
     success: boolean;
     claimText: string;
+    claimType?: 'fact' | 'news' | 'controversial';
     searchQuery: string;
     googleFactCheckResult?: {
         found: boolean;

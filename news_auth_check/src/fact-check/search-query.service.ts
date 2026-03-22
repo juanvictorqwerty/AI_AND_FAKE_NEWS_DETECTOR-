@@ -1,5 +1,14 @@
 import { Injectable, Logger } from '@nestjs/common';
 
+// Claim type classification
+export type ClaimType = 'fact' | 'news' | 'controversial';
+
+// Result interface
+export interface QueryGenerationResult {
+    type: ClaimType;
+    searchQuery: string;
+}
+
 /**
  * Service for generating optimized search queries from user claims
  * Transforms claims into search-engine-friendly queries optimized for fact-checking
@@ -57,29 +66,70 @@ export class SearchQueryService {
         'wordpress.com', 'tumblr.com',
     ];
 
+    // Controversial indicators
+    private readonly controversialIndicators = [
+        'vaccine', 'election', 'politician', 'political', 'government',
+        'conspiracy', 'climate', 'global warming', 'immigration', 'abortion',
+        'gun', 'weapon', 'terrorist', 'extremist', 'hoax', 'fake news',
+        'scam', 'fraud', 'lie', 'false', 'misinformation', 'disinformation',
+        'racist', 'sexist', 'homophobic', 'transgender', 'lgbtq',
+        'congress', 'senate', 'parliament', 'white house'
+    ];
+
+    // News indicators
+    private readonly newsIndicators = [
+        'breaking', 'developing', 'announcement', 'reported',
+        'crisis', 'emergency', 'outbreak', 'pandemic', 'war', 'conflict',
+        'attack', 'shooting', 'explosion', 'disaster', 'accident',
+        'summit', 'conference', 'vote', 'meeting'
+    ];
+
+    // Fact indicators
+    private readonly factIndicators = [
+        'where is', 'what is', 'who is', 'when did', 'how did',
+        'is it true that', 'does', 'can', 'location', 'capital',
+        'population', 'founded', 'created', 'invented', 'discovered',
+        'country', 'city', 'river', 'mountain', 'ocean', 'continent',
+        'planet', 'star', 'element', 'chemical', 'species', 'animal',
+        'president', 'king', 'queen', 'emperor', 'history', 'ancient',
+        'world war', 'century', 'year', 'date', 'birth', 'death'
+    ];
+
+    /**
+     * Classify claim and generate optimized search query
+     * Based on the system prompt rules:
+     * - "fact" → general knowledge (geography, science, history)
+     * - "news" → recent or time-sensitive events
+     * - "controversial" → disputed, political, or viral claims
+     * 
+     * @param claim - The user's claim
+     * @returns Object with claim type and optimized search query
+     */
+    classifyAndGenerateQuery(claim: string): QueryGenerationResult {
+        this.logger.log(`Classifying and generating query for: "${claim.substring(0, 50)}..."`);
+
+        // Step 1: Classify the claim
+        const claimType = this.classifyClaim(claim);
+
+        // Step 2: Generate optimized query based on type
+        const searchQuery = this.generateTypeBasedQuery(claim, claimType);
+
+        this.logger.log(`Classified as: ${claimType}, Generated query: "${searchQuery}"`);
+        
+        return {
+            type: claimType,
+            searchQuery,
+        };
+    }
+
     /**
      * Generate an optimized search query from a claim
-     * Removes vague terms and adds keywords for reliable news
      * @param claim - The user's claim
      * @returns Optimized search query string
      */
     generateSearchQuery(claim: string): string {
-        this.logger.log(`Generating search query for claim: "${claim.substring(0, 50)}..."`);
-
-        // Step 1: Clean the claim
-        let query = this.cleanClaim(claim);
-
-        // Step 2: Remove vague time terms
-        query = this.removeVagueTerms(query);
-
-        // Step 3: Add news/reliable source keywords
-        query = this.addNewsKeywords(query);
-
-        // Step 4: Add year if relevant (helps with historical claims)
-        query = this.addYearContext(query);
-
-        this.logger.log(`Generated query: "${query}"`);
-        return query;
+        const result = this.classifyAndGenerateQuery(claim);
+        return result.searchQuery;
     }
 
     /**
@@ -123,7 +173,6 @@ export class SearchQueryService {
         // Check if it's a trusted domain
         for (const domain of this.trustedDomains) {
             if (domain.startsWith('.')) {
-                // Handle .gov domains
                 if (urlLower.includes(domain)) {
                     return true;
                 }
@@ -217,13 +266,137 @@ export class SearchQueryService {
         return [...this.untrustedDomains];
     }
 
+    // ============== Private Methods ==============
+
+    /**
+     * Classify a claim into one of three types
+     */
+    private classifyClaim(claim: string): ClaimType {
+        const claimLower = claim.toLowerCase();
+
+        // Check for controversial first (highest priority)
+        if (this.controversialIndicators.some(ind => claimLower.includes(ind))) {
+            return 'controversial';
+        }
+
+        // Check for news indicators
+        if (this.newsIndicators.some(ind => claimLower.includes(ind))) {
+            return 'news';
+        }
+
+        // Check for fact indicators
+        if (this.factIndicators.some(ind => claimLower.includes(ind))) {
+            return 'fact';
+        }
+
+        // Default: treat as controversial if unclear (safer for fact-checking)
+        return 'controversial';
+    }
+
+    /**
+     * Generate optimized query based on claim type
+     */
+    private generateTypeBasedQuery(claim: string, claimType: ClaimType): string {
+        // Clean the claim first
+        let query = this.cleanClaim(claim);
+
+        switch (claimType) {
+            case 'fact':
+                return this.optimizeFactQuery(query);
+            case 'news':
+                return this.optimizeNewsQuery(query);
+            case 'controversial':
+                return this.optimizeControversialQuery(query);
+            default:
+                return this.optimizeControversialQuery(query);
+        }
+    }
+
+    /**
+     * Optimize for factual claims (geography, science, history)
+     */
+    private optimizeFactQuery(query: string): string {
+        const queryLower = query.toLowerCase();
+
+        // If already has question phrases, add Wikipedia
+        if (queryLower.includes('where') || queryLower.includes('what') || 
+            queryLower.includes('who') || queryLower.includes('when')) {
+            return `${query} Wikipedia`;
+        }
+
+        // Convert to question format based on content
+        if (queryLower.includes('is ') || queryLower.includes('are ')) {
+            return `Is it true that ${query}`;
+        }
+
+        // Add what/where/who based on context
+        if (queryLower.includes('located') || queryLower.includes('location')) {
+            return `Where is ${query.replace(/\b(located|location)\b/gi, '').trim()}`;
+        }
+
+        if (queryLower.includes('capital')) {
+            return `What is the capital of ${query.replace(/\bcapital\b/gi, '').trim()}`;
+        }
+
+        // Default: add "what is" for facts
+        return `What is ${query}`;
+    }
+
+    /**
+     * Optimize for news claims (recent events)
+     */
+    private optimizeNewsQuery(query: string): string {
+        // Remove vague time terms
+        query = this.removeVagueTerms(query);
+
+        // Check if query already has news keywords
+        const hasNewsKeyword = ['news', 'report', 'update', 'breaking'].some(kw => 
+            query.toLowerCase().includes(kw)
+        );
+
+        if (!hasNewsKeyword) {
+            // Add year if present in claim, otherwise add news
+            const yearMatch = query.match(/\b(19|20)\d{2}\b/);
+            if (yearMatch) {
+                return `${query} news report ${yearMatch[0]}`;
+            }
+            return `${query} news report`;
+        }
+
+        return query;
+    }
+
+    /**
+     * Optimize for controversial claims (disputed, political, viral)
+     */
+    private optimizeControversialQuery(query: string): string {
+        // Remove vague terms
+        query = this.removeVagueTerms(query);
+
+        const queryLower = query.toLowerCase();
+
+        // Check if already has fact-check keywords
+        if (queryLower.includes('fact check') || queryLower.includes('true or false')) {
+            return query;
+        }
+
+        // Add fact check and true/false indicators
+        if (queryLower.includes('is ') || queryLower.includes('are ') || 
+            queryLower.includes('was ') || queryLower.includes('were ')) {
+            return `${query} fact check true or false`;
+        }
+
+        // Default for controversial
+        return `${query} fact check verified`;
+    }
+
     /**
      * Clean and normalize claim text
      */
     private cleanClaim(claim: string): string {
         return claim
-            .replace(/[^\w\s.,!?'"-]/g, '') // Remove special characters except punctuation
-            .replace(/\s+/g, ' ') // Normalize whitespace
+            .replace(/[^\w\s.,!?'"-]/g, '')
+            .replace(/\s+/g, ' ')
             .trim()
             .substring(0, 200);
     }
@@ -234,11 +407,9 @@ export class SearchQueryService {
     private removeVagueTerms(query: string): string {
         let result = query;
         for (const term of this.vagueTerms) {
-            // Remove the term (case insensitive)
             const regex = new RegExp(`\\b${term}\\b`, 'gi');
             result = result.replace(regex, '');
         }
-        // Clean up extra spaces
         return result.replace(/\s+/g, ' ').trim();
     }
 
@@ -246,34 +417,12 @@ export class SearchQueryService {
      * Add news keywords to make query more targeted
      */
     private addNewsKeywords(query: string): string {
-        // Check if query already has news keywords
         const hasKeyword = this.newsKeywords.some(kw => 
             query.toLowerCase().includes(kw)
         );
 
         if (!hasKeyword) {
-            // Add "news" for general queries
             return `${query} news`;
-        }
-
-        return query;
-    }
-
-    /**
-     * Add year context for historical claims
-     */
-    private addYearContext(query: string): string {
-        // Check if query already has a year
-        const yearPattern = /\b(19|20)\d{2}\b/;
-        if (yearPattern.test(query)) {
-            return query;
-        }
-
-        // Check for historical indicators that might benefit from year
-        const historicalIndicators = ['created', 'established', 'founded', 'independent', 'war', 'election'];
-        if (historicalIndicators.some(ind => query.toLowerCase().includes(ind))) {
-            // Add current year context hint
-            return query;
         }
 
         return query;
