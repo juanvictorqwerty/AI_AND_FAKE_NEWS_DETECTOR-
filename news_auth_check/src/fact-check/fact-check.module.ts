@@ -3,7 +3,9 @@ import { FactCheckController } from './fact-check.controller';
 import { WebScraperService } from './web-scraper.service';
 import { SearchQueryService } from './search-query.service';
 import { VerdictAnalysisService } from './verdict-analysis.service';
+import { FactCheckStorageService } from './fact-check-storage.service';
 import { AuthModule } from '../auth/auth.module';
+import { DatabaseModule } from '../db/db.module';
 
 /**
  * FactCheckModule - Provides web search fact-checking capabilities
@@ -28,13 +30,19 @@ import { AuthModule } from '../auth/auth.module';
  * - GOOGLE_SEARCH_ENGINE_ID - For Google Custom Search (optional)
  */
 @Module({
-    imports: [AuthModule],
+    imports: [AuthModule, DatabaseModule],
     controllers: [FactCheckController],
     providers: [
         WebScraperService,
         SearchQueryService,
         VerdictAnalysisService,
+        FactCheckStorageService,
     ],
-    exports: [WebScraperService, SearchQueryService, VerdictAnalysisService],
+    exports: [
+        WebScraperService,
+        SearchQueryService,
+        VerdictAnalysisService,
+        FactCheckStorageService,
+    ],
 })
 export class FactCheckModule {}
