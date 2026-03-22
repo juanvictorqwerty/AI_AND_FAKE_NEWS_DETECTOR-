@@ -8,6 +8,13 @@
       "when": 1774082498566,
       "tag": "0000_oval_monster_badoon",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1774192012992,
+      "tag": "0001_clammy_nocturne",
+      "breakpoints": true
     }
   ]
 }
