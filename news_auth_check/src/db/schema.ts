@@ -31,7 +31,7 @@ export const newsCheckedTable=pgTable("news_checked",{
     created_at:timestamp("created_at",{withTimezone:true}).defaultNow(),
     userID:uuid("userID").notNull().references(()=>usersTable.id),
     requests:jsonb("requests").notNull(),
-    score:integer("score").notNull()
+    response:jsonb("response").notNull()
 });
 
 export const newsCheckedIndexTable=pgTable("news_checked_index",{
