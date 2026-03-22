@@ -15,11 +15,10 @@ Make all the basic screens
 
 Enable the popup views
 
-
 ### Saturday
 
 Enable api for fact checking new request generator
 
 ### Sunday
 
-Enable api for fact checking
+Enable api for fact checking, add pop ups and request generator //lost friday
