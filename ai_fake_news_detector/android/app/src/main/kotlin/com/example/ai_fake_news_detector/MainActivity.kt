@@ -11,9 +11,21 @@ import io.flutter.plugin.common.MethodChannel
 class MainActivity : FlutterActivity() {
 
     private val CHANNEL = "android_intent/android_intent"
+    private val FACT_CHECK_CHANNEL = "fact_check_channel"
+    
+    companion object {
+        private var flutterEngineInstance: FlutterEngine? = null
+        
+        fun getFlutterEngine(): FlutterEngine? {
+            return flutterEngineInstance
+        }
+    }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        
+        // Store FlutterEngine for use in NotificationForegroundService
+        flutterEngineInstance = flutterEngine
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
             .setMethodCallHandler { call, result ->
@@ -65,6 +77,35 @@ class MainActivity : FlutterActivity() {
                         }
                     }
 
+                    else -> result.notImplemented()
+                }
+            }
+            
+        // Fact Check Channel for notification service
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, FACT_CHECK_CHANNEL)
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "startNotificationService" -> {
+                        NotificationForegroundService.startService(this)
+                        result.success(true)
+                    }
+                    "stopNotificationService" -> {
+                        NotificationForegroundService.stopService(this)
+                        result.success(true)
+                    }
+                    "updateNotificationResult" -> {
+                        val resultText = call.argument<String>("result")
+                        if (resultText != null) {
+                            // Update notification with result using running service instance
+                            val service = NotificationForegroundService.getInstance()
+                            if (service != null) {
+                                service.updateNotificationWithResult(resultText)
+                            } else {
+                                println("MainActivity: ERROR - NotificationForegroundService instance is null")
+                            }
+                        }
+                        result.success(true)
+                    }
                     else -> result.notImplemented()
                 }
             }

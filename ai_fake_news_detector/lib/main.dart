@@ -2,6 +2,7 @@ import 'package:ai_fake_news_detector/pages/Splash.view.dart';
 import 'package:ai_fake_news_detector/services/auth_service.dart';
 import 'package:ai_fake_news_detector/services/auth_controller.dart';
 import 'package:ai_fake_news_detector/services/fact_check_service.dart';
+import 'package:ai_fake_news_detector/services/notification_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:get/get_navigation/src/root/get_material_app.dart';
@@ -18,6 +19,11 @@ Future<void> main() async {
   Get.put(AuthService());
   Get.put(AuthController());
   Get.put(FactCheckService());
+  
+  // Set up MethodChannel before initializing NotificationService
+  NotificationService.setupChannel();
+  
+  Get.put(NotificationService());
   
   runApp(const App());
 }
