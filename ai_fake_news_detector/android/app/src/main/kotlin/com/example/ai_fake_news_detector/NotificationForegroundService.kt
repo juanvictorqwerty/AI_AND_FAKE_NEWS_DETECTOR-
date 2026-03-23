@@ -9,6 +9,13 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.RemoteInput
 import io.flutter.plugin.common.MethodChannel
 
+// NOTE: If you see "Unresolved reference: ic_send" or "Unresolved reference: ic_close" errors,
+// this is because the R class hasn't been generated yet. To fix this:
+// 1. Build the project: flutter build apk --debug
+// 2. Or clean and rebuild: cd android && ./gradlew clean && cd .. && flutter clean && flutter pub get
+// 3. Invalidate caches in Android Studio: File -> Invalidate Caches / Restart
+// The drawable resources (ic_send.xml and ic_close.xml) exist in res/drawable/ and are correctly defined.
+
 class NotificationForegroundService : Service() {
 
     companion object {
@@ -191,6 +198,7 @@ class NotificationForegroundService : Service() {
     }
 
     fun updateNotificationWithResult(result: String) {
+        println("NotificationForegroundService: updateNotificationWithResult called with: $result")
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("AI Fact Checker - Result")
             .setContentText(result)
@@ -203,5 +211,6 @@ class NotificationForegroundService : Service() {
 
         val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.notify(NOTIFICATION_ID, notification)
+        println("NotificationForegroundService: Notification updated successfully")
     }
 }

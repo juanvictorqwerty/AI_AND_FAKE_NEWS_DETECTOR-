@@ -74,17 +74,22 @@ class NotificationService extends GetxService {
       
       if (result['success'] == true) {
         final factCheckResult = result['result'];
-        final verdict = factCheckResult.verdict ?? 'Unknown';
-        final explanation = factCheckResult.explanation ?? 'No explanation available';
+        final verdict = factCheckResult.combinedVerdict;
+        final reason = factCheckResult.verdict?.reason ?? 'No reason available';
+        final evidenceSummary = factCheckResult.evidenceSummary;
         
         // Format the result for notification
-        final resultText = 'Verdict: $verdict\n$explanation';
+        final resultText = 'Verdict: $verdict\n$reason\n\n$evidenceSummary';
         lastResult.value = resultText;
+        
+        print('NotificationService: SUCCESS - Updating notification with result');
+        print('NotificationService: Result text: $resultText');
         
         // Update the notification with the result
         await _updateNotificationResult(resultText);
       } else {
         final errorMessage = result['message'] ?? 'Fact check failed';
+        print('NotificationService: FAILED - Updating notification with error: $errorMessage');
         await _updateNotificationResult('Error: $errorMessage');
       }
     } catch (e) {
@@ -95,7 +100,9 @@ class NotificationService extends GetxService {
   
   Future<void> _updateNotificationResult(String result) async {
     try {
+      print('NotificationService: Calling updateNotificationResult with: $result');
       await _channel.invokeMethod('updateNotificationResult', {'result': result});
+      print('NotificationService: updateNotificationResult called successfully');
     } catch (e) {
       print('NotificationService: Error updating notification: $e');
     }

@@ -95,10 +95,12 @@ class MainActivity : FlutterActivity() {
                     }
                     "updateNotificationResult" -> {
                         val resultText = call.argument<String>("result")
+                        println("MainActivity: updateNotificationResult called with: $resultText")
                         if (resultText != null) {
                             // Update notification with result using running service instance
                             val service = NotificationForegroundService.getInstance()
                             if (service != null) {
+                                println("MainActivity: Calling service.updateNotificationWithResult")
                                 service.updateNotificationWithResult(resultText)
                             } else {
                                 println("MainActivity: ERROR - NotificationForegroundService instance is null")
