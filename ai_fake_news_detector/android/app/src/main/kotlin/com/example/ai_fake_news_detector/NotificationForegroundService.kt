@@ -7,15 +7,14 @@ import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import androidx.core.app.RemoteInput
-import io.flutter.plugin.common.MethodChannel
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
-// NOTE: If you see "Unresolved reference: ic_send" or "Unresolved reference: ic_close" errors,
-// this is because the R class hasn't been generated yet. To fix this:
-// 1. Build the project: flutter build apk --debug
-// 2. Or clean and rebuild: cd android && ./gradlew clean && cd .. && flutter clean && flutter pub get
-// 3. Invalidate caches in Android Studio: File -> Invalidate Caches / Restart
-// The drawable resources (ic_send.xml and ic_close.xml) exist in res/drawable/ and are correctly defined.
-
+/**
+ * NotificationForegroundService - Fully native Android notification service
+ * Handles fact-checking requests without any Flutter dependencies
+ */
 class NotificationForegroundService : Service() {
 
     companion object {
@@ -31,6 +30,9 @@ class NotificationForegroundService : Service() {
         // Conversation context for continuous chat
         private var lastQuestion: String? = null
         private var lastAnswer: String? = null
+        
+        // API service for fact-checking
+        private val apiService = FactCheckApiService()
         
         fun isServiceRunning(): Boolean = isRunning
         
@@ -59,6 +61,7 @@ class NotificationForegroundService : Service() {
     override fun onCreate() {
         super.onCreate()
         instance = this
+        ConfigManager.init(this)
         createNotificationChannel()
     }
 
@@ -176,33 +179,71 @@ class NotificationForegroundService : Service() {
                 // Store the question for conversation context
                 lastQuestion = inputText
                 
-                // Send the text to Flutter via MethodChannel
-                sendToFlutter(inputText)
-                
                 // Update notification with processing status
                 updateNotificationWithStatus("Processing: $inputText")
+                
+                // Call the native API service
+                processFactCheckRequest(inputText)
             }
         }
     }
 
-    private fun sendToFlutter(text: String) {
-        // Get the Flutter engine from MainActivity
-        val flutterEngine = MainActivity.getFlutterEngine()
-        if (flutterEngine != null) {
+    /**
+     * Process fact-check request using native API service
+     * This replaces the Flutter MethodChannel communication
+     */
+    private fun processFactCheckRequest(claim: String) {
+        CoroutineScope(Dispatchers.Main).launch {
             try {
-                val channel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "fact_check_channel")
-                println("NotificationForegroundService: Sending to Flutter: $text")
-                channel.invokeMethod("onNotificationInput", text)
+                // Get authentication token from SharedPreferences
+                val token = ConfigManager.getAuthToken()
+                
+                if (token.isNullOrEmpty()) {
+                    updateNotificationWithStatus("Error: Please log in to use fact-checking")
+                    return@launch
+                }
+                
+                // Call the native API service
+                val result = apiService.searchFactCheck(claim, token)
+                
+                if (result.success) {
+                    // Build formatted result
+                    val formattedResult = buildFormattedResult(result)
+                    updateNotificationWithResult(formattedResult)
+                } else {
+                    // Show error message
+                    updateNotificationWithStatus("Error: ${result.message}")
+                }
             } catch (e: Exception) {
-                println("NotificationForegroundService: Error sending to Flutter: ${e.message}")
-                // Update notification with error if Flutter is not available
-                updateNotificationWithStatus("Error: App is closed. Please open the app to continue.")
+                println("NotificationForegroundService: Error processing fact check: ${e.message}")
+                updateNotificationWithStatus("Error: ${e.message}")
             }
-        } else {
-            println("NotificationForegroundService: ERROR - FlutterEngine is null")
-            // Update notification with error if Flutter engine is not available
-            updateNotificationWithStatus("Error: App is closed. Please open the app to continue.")
         }
+    }
+
+    /**
+     * Build formatted result from API response
+     */
+    private fun buildFormattedResult(result: FactCheckApiService.FactCheckResult): String {
+        val sb = StringBuilder()
+        
+        // Add verdict
+        sb.append("Verdict: ${result.verdict}\n\n")
+        
+        // Add explanation if available
+        if (result.explanation.isNotEmpty()) {
+            sb.append("${result.explanation}\n\n")
+        }
+        
+        // Add sources if available
+        if (result.sources.isNotEmpty()) {
+            sb.append("Sources:\n")
+            result.sources.forEach { source ->
+                sb.append("• $source\n")
+            }
+        }
+        
+        return sb.toString().trim()
     }
 
     private fun updateNotificationWithStatus(status: String) {

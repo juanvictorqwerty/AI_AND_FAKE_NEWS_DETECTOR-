@@ -15,19 +15,22 @@ class MainActivity : FlutterActivity() {
     private val CHANNEL = "android_intent/android_intent"
     private val FACT_CHECK_CHANNEL = "fact_check_channel"
     
-    companion object {
-        private var flutterEngineInstance: FlutterEngine? = null
+    override fun onCreate(savedInstanceState: android.os.Bundle?) {
+        super.onCreate(savedInstanceState)
         
-        fun getFlutterEngine(): FlutterEngine? {
-            return flutterEngineInstance
+        // Initialize ConfigManager
+        ConfigManager.init(this)
+        
+        // Auto-start notification service on first app launch
+        // This ensures the service is running even if BootReceiver doesn't trigger
+        if (!NotificationForegroundService.isServiceRunning()) {
+            println("MainActivity: Auto-starting NotificationForegroundService on first launch")
+            NotificationForegroundService.startService(this)
         }
     }
-
+    
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
-        
-        // Store FlutterEngine for use in NotificationForegroundService
-        flutterEngineInstance = flutterEngine
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
             .setMethodCallHandler { call, result ->
@@ -84,6 +87,7 @@ class MainActivity : FlutterActivity() {
             }
             
         // Fact Check Channel for notification service
+        // Now only used for configuration and service control
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, FACT_CHECK_CHANNEL)
             .setMethodCallHandler { call, result ->
                 when (call.method) {
@@ -95,18 +99,21 @@ class MainActivity : FlutterActivity() {
                         NotificationForegroundService.stopService(this)
                         result.success(true)
                     }
-                    "updateNotificationResult" -> {
-                        val resultText = call.argument<String>("result")
-                        println("MainActivity: updateNotificationResult called with: $resultText")
-                        if (resultText != null) {
-                            // Update notification with result using running service instance
-                            val service = NotificationForegroundService.getInstance()
-                            if (service != null) {
-                                println("MainActivity: Calling service.updateNotificationWithResult")
-                                service.updateNotificationWithResult(resultText)
-                            } else {
-                                println("MainActivity: ERROR - NotificationForegroundService instance is null")
-                            }
+                    "configureBaseUrl" -> {
+                        // Configure base URL from Flutter
+                        val baseUrl = call.argument<String>("baseUrl")
+                        if (baseUrl != null) {
+                            ConfigManager.setBaseUrl(baseUrl)
+                            println("MainActivity: Base URL configured: $baseUrl")
+                        }
+                        result.success(true)
+                    }
+                    "configureAuthToken" -> {
+                        // Configure auth token from Flutter
+                        val token = call.argument<String>("token")
+                        if (token != null) {
+                            ConfigManager.setAuthToken(token)
+                            println("MainActivity: Auth token configured")
                         }
                         result.success(true)
                     }

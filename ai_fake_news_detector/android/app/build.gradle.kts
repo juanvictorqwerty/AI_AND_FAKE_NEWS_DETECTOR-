@@ -39,6 +39,18 @@ android {
     }
 }
 
+dependencies {
+    // OkHttp for native HTTP requests
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    
+    // Kotlin Coroutines for async operations
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+    
+    // Gson for JSON parsing
+    implementation("com.google.code.gson:gson:2.10.1")
+}
+
 flutter {
     source = "../.."
 }
