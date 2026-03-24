@@ -99,6 +99,11 @@ class MainActivity : FlutterActivity() {
                         NotificationForegroundService.stopService(this)
                         result.success(true)
                     }
+                    "isNotificationServiceRunning" -> {
+                        val isRunning = NotificationForegroundService.isServiceRunning()
+                        println("MainActivity: Checking if notification service is running: $isRunning")
+                        result.success(isRunning)
+                    }
                     "configureBaseUrl" -> {
                         // Configure base URL from Flutter
                         val baseUrl = call.argument<String>("baseUrl")

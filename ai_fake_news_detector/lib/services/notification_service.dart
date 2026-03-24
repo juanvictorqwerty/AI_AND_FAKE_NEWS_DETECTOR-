@@ -17,6 +17,20 @@ class NotificationService extends GetxService {
   void onInit() {
     super.onInit();
     _setupMethodChannel();
+    _checkServiceState();
+  }
+  
+  /// Check the actual service state from the Kotlin side
+  Future<void> _checkServiceState() async {
+    try {
+      final result = await _channel.invokeMethod('isNotificationServiceRunning');
+      isServiceRunning.value = result == true;
+      print('NotificationService: Service state checked on init: ${isServiceRunning.value}');
+    } catch (e) {
+      print('NotificationService: Error checking service state: $e');
+      // If we can't check, assume it's not running
+      isServiceRunning.value = false;
+    }
   }
   
   // Static method to set up channel before service initialization
@@ -134,5 +148,11 @@ class NotificationService extends GetxService {
   
   Future<void> updateNotificationWithResult(String result) async {
     await _updateNotificationResult(result);
+  }
+  
+  /// Manually refresh the service state from the Kotlin side
+  /// This can be called from the UI to ensure the state is up to date
+  Future<void> refreshServiceState() async {
+    await _checkServiceState();
   }
 }
