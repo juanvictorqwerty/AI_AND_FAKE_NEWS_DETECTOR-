@@ -1,7 +1,7 @@
 import 'package:ai_fake_news_detector/pages/SignUpScreen.dart';
 import 'package:ai_fake_news_detector/pages/HomePage.dart';
 import 'package:ai_fake_news_detector/utils/global.colors.dart';
-import 'package:ai_fake_news_detector/widgets/auth_button.global.dart';
+import 'package:ai_fake_news_detector/widgets/big_button.global.dart';
 import 'package:ai_fake_news_detector/widgets/text.form.global.dart';
 import 'package:ai_fake_news_detector/services/auth_controller.dart';
 import 'package:get/get.dart';
@@ -76,7 +76,7 @@ class _LoginState extends State<Login> {
 
                 Column(
                   children: [
-                    AuthButton(
+                    BigButton(
                       text: 'Login',
                       color: GlobalColors.mainColor,
                       isLoading: _isLoading,
@@ -113,7 +113,7 @@ class _LoginState extends State<Login> {
                     ),
 
                     const SizedBox(height: 20),
-                    AuthButton(
+                    BigButton(
                       text: "Connect anonymously",
                       color: Colors.black,
                       isLoading: _isLoading,
