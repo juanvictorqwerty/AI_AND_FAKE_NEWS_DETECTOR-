@@ -66,16 +66,24 @@ class FactCheckApiService {
                 
                 // Check success field from backend
                 if (json.optBoolean("success", false)) {
-                    // Parse the result
-                    val resultJson = json.optJSONObject("result")
-                    val verdict = resultJson?.optString("verdict", "Unknown") ?: "Unknown"
-                    val explanation = resultJson?.optString("explanation", "") ?: ""
-                    val sources = resultJson?.optJSONArray("sources")
+                    // Parse the verdict object (it's at top level, not inside "result")
+                    val verdictJson = json.optJSONObject("verdict")
+                    val verdict = verdictJson?.optString("verdict", "Unknown") ?: "Unknown"
+                    val explanation = verdictJson?.optString("reason", "") ?: ""
+                    
+                    // Parse sources from top level
+                    val sources = json.optJSONArray("sources")
                     val sourcesList = mutableListOf<String>()
                     
                     if (sources != null) {
                         for (i in 0 until sources.length()) {
-                            sourcesList.add(sources.optString(i, ""))
+                            val source = sources.optJSONObject(i)
+                            if (source != null) {
+                                val title = source.optString("title", "")
+                                if (title.isNotEmpty()) {
+                                    sourcesList.add(title)
+                                }
+                            }
                         }
                     }
                     
