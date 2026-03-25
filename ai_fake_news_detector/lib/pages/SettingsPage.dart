@@ -1,3 +1,4 @@
+import 'package:ai_fake_news_detector/notifications/permanent_fact_check.dart';
 import 'package:ai_fake_news_detector/services/auth_controller.dart';
 import 'package:ai_fake_news_detector/utils/global.colors.dart';
 import 'package:ai_fake_news_detector/widgets/settings/dialogs/change_password_dialog.dart';
@@ -206,6 +207,7 @@ class _SettingsPageState extends State<SettingsPage>
                       onOpenSettings: _openOverlayPermissionSettings,
                       platform: platform,
                     ),
+                    const PermanentFactCheck(),
                   ],
                 ),
                 const SizedBox(height: 40),
