@@ -1,0 +1,31 @@
+# FastAPI and server
+fastapi
+uvicorn[standard]
+python-multipart
+
+# MinIO client
+minio
+
+# AI/ML dependencies
+torch
+torchvision
+transformers
+Pillow
+
+# Environment and configuration
+python-dotenv
+
+# Async support
+aiofiles
+
+# Validation
+pydantic
+
+# HTTP client
+httpx
+
+# Logging
+loguru
+
+# UUID generation
+uuid

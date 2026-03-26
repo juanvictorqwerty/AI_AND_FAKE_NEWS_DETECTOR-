@@ -1,5 +1,6 @@
 
 import 'package:ai_fake_news_detector/pages/FactCheckPage.dart';
+import 'package:ai_fake_news_detector/pages/MediaPickerPage.dart';
 import 'package:ai_fake_news_detector/pages/SettingsPage.dart';
 import 'package:ai_fake_news_detector/services/auth_controller.dart';
 import 'package:ai_fake_news_detector/utils/global.colors.dart';
@@ -80,6 +81,19 @@ class _HomepageState extends State<Homepage> {
                           );
                       },
                       color: Colors.green
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    BigButton(
+                      text: "Upload Media",
+                      onTap: (){
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder:(context)=>const MediaPickerPage()),
+                        );
+                      },
+                      color: Colors.deepPurpleAccent
                     )
                   ],
                 ),
