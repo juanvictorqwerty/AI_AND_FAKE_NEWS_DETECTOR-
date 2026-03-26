@@ -80,6 +80,14 @@ class _HomepageState extends State<Homepage> {
                           );
                       },
                       color: Colors.green
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    BigButton(
+                      text: "Upload Media", 
+                      onTap: (){}, 
+                      color: Colors.deepPurpleAccent
                     )
                   ],
                 ),
