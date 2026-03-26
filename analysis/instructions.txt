@@ -1,0 +1,138 @@
+
+/"""
+Build a FastAPI backend service for an AI image analysis pipeline with the following specifications:
+
+1. **File Upload Endpoint**:
+
+* Create a `/upload` endpoint that accepts image files (PNG, JPG, JPEG).
+* Limit file size to a maximum of 20MB.
+* Temporarily store uploaded files in MinIO (or S3-compatible storage).
+* Generate a unique ID or path for each uploaded file.
+
+2. **AI Analysis**:
+
+* After upload, automatically process the file with an AI model (for example, using `transformers` pipeline like "Ateeqq/ai-vs-human-image-detector").
+""""""
+* The analysis should run asynchronously in the background.
+* Store the result temporarily in memory or in a simple database (or in MinIO if needed).
+
+3. **Results Endpoint**:
+
+* Create a `/results/{file_id}` endpoint to fetch analysis results.
+* If the analysis is not yet complete, return a proper “processing” status.
+* If the file ID is invalid or expired, return a clear error.
+
+4. **Temporary Storage & Cleanup**:
+
+* Uploaded files should be removed from MinIO after analysis is complete (or after a configurable TTL).
+* Results should also expire after a configurable TTL (e.g., 1 hour).
+
+5. **Error Handling & Validation**:
+
+* Reject files over 20MB or non-image formats.
+* Handle MinIO connectivity errors gracefully.
+* Return structured JSON responses with clear status and error messages.
+
+6. **Async & Performance**:
+
+* Use asynchronous endpoints wherever possible.
+* Avoid blocking operations for AI processing; consider background tasks.
+
+7. **MinIO Integration**:
+
+* Include setup for MinIO client.
+* Support basic operations:
+
+  * Upload temporary file
+  * Download for AI processing
+  * Delete after processing
+
+8. **Security & Practicalities**:
+
+* Validate file extensions and MIME types.
+* Use proper CORS setup for frontend access.
+* Log uploads, processing status, and errors.
+
+9. **Output**:
+
+* Provide full FastAPI service code with:
+
+  * Endpoints: `/upload` and `/results/{file_id}`
+  * MinIO integration
+  * Async background AI analysis
+* Include comments explaining key sections.
+
+Optional bonus:
+
+* Implement a queueBuild a FastAPI backend service for an AI image analysis pipeline with the following specifications:
+
+1. **File Upload Endpoint**:
+
+* Create a `/upload` endpoint that accepts image files (PNG, JPG, JPEG).
+* Limit file size to a maximum of 20MB.
+* Temporarily store uploaded files in MinIO (or S3-compatible storage).
+* Generate a unique ID or path for each uploaded file.
+
+2. **AI Analysis**:
+
+* After upload, automatically process the file with an AI model (for example, using `transformers` pipeline like "Ateeqq/ai-vs-human-image-detector").
+* The analysis should run asynchronously in the background.
+* Store the result temporarily in memory or in a simple database (or in MinIO if needed).
+
+3. **Results Endpoint**:
+
+* Create a `/results/{file_id}` endpoint to fetch analysis results.
+* If the analysis is not yet complete, return a proper “processing” status.
+* If the file ID is invalid or expired, return a clear error.
+
+4. **Temporary Storage & Cleanup**:
+
+* Uploaded files should be removed from MinIO after analysis is complete (or after a configurable TTL).
+* Results should also expire after a configurable TTL (e.g., 1 hour).
+
+5. **Error Handling & Validation**:
+
+* Reject files over 20MB or non-image formats.
+* Handle MinIO connectivity errors gracefully.
+* Return structured JSON responses with clear status and error messages.
+
+6. **Async & Performance**:
+
+* Use asynchronous endpoints wherever possible.
+* Avoid blocking operations for AI processing; consider background tasks.
+
+7. **MinIO Integration**:
+
+* Include setup for MinIO client.
+* Support basic operations:
+
+  * Upload temporary file
+  * Download for AI processing
+  * Delete after processing
+
+8. **Security & Practicalities**:
+
+* Validate file extensions and MIME types.
+* Use proper CORS setup for frontend access.
+* Log uploads, processing status, and errors.
+
+9. **Output**:
+
+* Provide full FastAPI service code with:
+
+  * Endpoints: `/upload` and `/results/{file_id}`
+  * MinIO integration
+  * Async background AI analysis
+* Include comments explaining key sections.
+
+Optional bonus:
+
+* Implement a queue mechanism for processing large number of uploads.
+* Allow returning analysis metrics (e.g., probability, label) in structured JSON.
+
+Do not include unnecessary frontend code; focus on backend and storage integration.
+ mechanism for processing large number of uploads.
+* Allow returning analysis metrics (e.g., probability, label) in structured JSON.
+
+Do not include unnecessary frontend code; focus on backend and storage integration.
+"""""
