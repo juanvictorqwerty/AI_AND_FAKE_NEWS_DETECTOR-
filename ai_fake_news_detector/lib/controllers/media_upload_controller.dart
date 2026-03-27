@@ -110,29 +110,40 @@ class MediaUploadController extends GetxController {
       final result = await _apiService.pollUntilComplete(
         uploadResponse.fileId,
         onStatusUpdate: (result) {
-          processingStatus.value = result.isProcessing ? 'Processing...' : result.status;
+          if (!isClosed) {
+            processingStatus.value = result.isProcessing ? 'Processing...' : result.status;
+          }
           print('MediaUploadController: Status update: ${result.status} - ${result.label}');
         },
       );
       
-      // Store result
-      analysisResult.value = result;
-      uploadState.value = UploadState.completed;
-      processingStatus.value = 'Analysis complete';
+      // Store result only if controller is not closed
+      if (!isClosed) {
+        analysisResult.value = result;
+        uploadState.value = UploadState.completed;
+        processingStatus.value = 'Analysis complete';
+      }
       
       print('MediaUploadController: Processing complete');
       print('MediaUploadController: Result: ${result.label} - ${result.confidencePercentage}');
       
     } catch (e) {
       print('MediaUploadController: Error: $e');
-      uploadState.value = UploadState.failed;
-      errorMessage.value = _getErrorMessage(e);
-      processingStatus.value = 'Failed';
+      if (!isClosed) {
+        uploadState.value = UploadState.failed;
+        errorMessage.value = _getErrorMessage(e);
+        processingStatus.value = 'Failed';
+      }
     }
   }
 
   /// Retry failed upload
   Future<void> retry() async {
+    if (isClosed) {
+      print('MediaUploadController: Cannot retry - controller is closed');
+      return;
+    }
+    
     if (filePath.value.isEmpty || fileType.value.isEmpty) {
       print('MediaUploadController: Cannot retry - no file information');
       return;

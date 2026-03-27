@@ -23,6 +23,7 @@ class _ProcessingScreenState extends State<ProcessingScreen> {
   final MediaUploadController _controller = Get.find<MediaUploadController>();
   VideoPlayerController? _videoController;
   bool _hasNavigated = false;
+  bool _isDisposed = false;
   Worker? _stateWorker;
 
   @override
@@ -34,6 +35,7 @@ class _ProcessingScreenState extends State<ProcessingScreen> {
 
   @override
   void dispose() {
+    _isDisposed = true;
     _stateWorker?.dispose();
     _videoController?.dispose();
     super.dispose();
@@ -42,7 +44,7 @@ class _ProcessingScreenState extends State<ProcessingScreen> {
   /// Setup listener for state changes
   void _setupStateListener() {
     _stateWorker = ever(_controller.uploadState, (state) {
-      if (state == UploadState.completed && !_hasNavigated && mounted) {
+      if (state == UploadState.completed && !_hasNavigated && mounted && !_isDisposed) {
         _hasNavigated = true;
         // Navigate to result page
         Navigator.pushReplacementNamed(context, '/media-result');
@@ -55,7 +57,9 @@ class _ProcessingScreenState extends State<ProcessingScreen> {
     if (_controller.fileType.value == 'video' && _controller.filePath.value.isNotEmpty) {
       _videoController = VideoPlayerController.file(File(_controller.filePath.value));
       await _videoController!.initialize();
-      setState(() {});
+      if (!_isDisposed && mounted) {
+        setState(() {});
+      }
     }
   }
 
