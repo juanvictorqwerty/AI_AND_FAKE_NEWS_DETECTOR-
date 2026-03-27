@@ -32,8 +32,8 @@ class UploadController:
         
         # Configuration
         self.max_file_size = 20 * 1024 * 1024  # 20MB
-        self.allowed_extensions = {'.jpg', '.jpeg', '.png'}
-        self.allowed_mime_types = {'image/jpeg', 'image/png', 'image/jpg'}
+        self.allowed_extensions = {'.jpg', '.jpeg', '.png', '.webp'}
+        self.allowed_mime_types = {'image/jpeg', 'image/png', 'image/jpg', 'image/webp'}
         
         # TTL configuration
         self.file_ttl = int(os.getenv('FILE_TTL', 3600))  # 1 hour
