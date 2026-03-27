@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:video_player/video_player.dart';
-import 'package:ai_fake_news_detector/controllers/media_upload_controller.dart';
+import 'package:ai_fake_news_detector/services/media_analysis_channel.dart';
 import 'package:ai_fake_news_detector/utils/global.colors.dart';
 
 /// Screen for showing upload progress and processing status
@@ -20,11 +20,12 @@ class ProcessingScreen extends StatefulWidget {
 }
 
 class _ProcessingScreenState extends State<ProcessingScreen> {
-  final MediaUploadController _controller = Get.find<MediaUploadController>();
   VideoPlayerController? _videoController;
   bool _hasNavigated = false;
   bool _isDisposed = false;
-  Worker? _stateWorker;
+  String? _taskId;
+  String? _status;
+  double _progress = 0.0;
 
   @override
   void initState() {
@@ -36,31 +37,32 @@ class _ProcessingScreenState extends State<ProcessingScreen> {
   @override
   void dispose() {
     _isDisposed = true;
-    _stateWorker?.dispose();
     _videoController?.dispose();
     super.dispose();
   }
 
   /// Setup listener for state changes
   void _setupStateListener() {
-    _stateWorker = ever(_controller.uploadState, (state) {
-      if (state == UploadState.completed && !_hasNavigated && mounted && !_isDisposed) {
+    MediaAnalysisChannel.setOnAnalysisResult((resultData) {
+      if (!_hasNavigated && mounted && !_isDisposed) {
         _hasNavigated = true;
         // Navigate to result page
         Navigator.pushReplacementNamed(context, '/media-result');
+      }
+    });
+    
+    MediaAnalysisChannel.setOnAnalysisError((errorData) {
+      if (mounted && !_isDisposed) {
+        setState(() {
+          _status = 'failed';
+        });
       }
     });
   }
 
   /// Initialize video controller if file is a video
   Future<void> _initializeVideoController() async {
-    if (_controller.fileType.value == 'video' && _controller.filePath.value.isNotEmpty) {
-      _videoController = VideoPlayerController.file(File(_controller.filePath.value));
-      await _videoController!.initialize();
-      if (!_isDisposed && mounted) {
-        setState(() {});
-      }
-    }
+    // Video controller initialization will be handled by the page that navigates here
   }
 
   @override
@@ -115,107 +117,25 @@ class _ProcessingScreenState extends State<ProcessingScreen> {
 
   /// Build file preview widget
   Widget _buildFilePreview() {
-    final filePath = _controller.filePath.value;
-    final fileType = _controller.fileType.value;
-    
-    if (filePath.isEmpty) {
-      return const SizedBox.shrink();
-    }
-    
-    if (fileType == 'image') {
-      return Container(
-        height: 250,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey[400]!),
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: Image.file(
-            File(filePath),
-            fit: BoxFit.contain,
-            errorBuilder: (context, error, stackTrace) {
-              return Container(
-                color: Colors.grey[200],
-                child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.error_outline,
-                        size: 64,
-                        color: Colors.red[400],
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Error loading image',
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Colors.red[400],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-      );
-    } else if (fileType == 'video') {
-      if (_videoController != null && _videoController!.value.isInitialized) {
-        return Container(
-          height: 250,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.grey[400]!),
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: AspectRatio(
-              aspectRatio: _videoController!.value.aspectRatio,
-              child: VideoPlayer(_videoController!),
-            ),
-          ),
-        );
-      } else {
-        return Container(
-          height: 200,
-          decoration: BoxDecoration(
-            color: Colors.grey[200],
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.grey[400]!),
-          ),
-          child: Center(
-            child: CircularProgressIndicator(
-              color: GlobalColors.mainColor,
-            ),
-          ),
-        );
-      }
-    }
-    
+    // File preview will be handled by the page that navigates here
     return const SizedBox.shrink();
   }
 
   /// Build progress indicator widget
   Widget _buildProgressIndicator() {
-    final state = _controller.uploadState.value;
-    final progress = _controller.uploadProgress.value;
-    
-    if (state == UploadState.uploading) {
+    if (_status == 'uploading') {
       // Show linear progress for upload
       return Column(
         children: [
           LinearProgressIndicator(
-            value: progress,
+            value: _progress,
             backgroundColor: Colors.grey[300],
             valueColor: AlwaysStoppedAnimation<Color>(GlobalColors.mainColor),
             minHeight: 8,
           ),
           const SizedBox(height: 8),
           Text(
-            '${(progress * 100).toStringAsFixed(0)}%',
+            '${(_progress * 100).toStringAsFixed(0)}%',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
@@ -224,7 +144,7 @@ class _ProcessingScreenState extends State<ProcessingScreen> {
           ),
         ],
       );
-    } else if (state == UploadState.processing) {
+    } else if (_status == 'processing') {
       // Show circular progress for processing
       return Column(
         children: [
@@ -254,7 +174,7 @@ class _ProcessingScreenState extends State<ProcessingScreen> {
 
   /// Build status message widget
   Widget _buildStatusMessage() {
-    final message = _controller.statusMessage;
+    final message = _status ?? 'Ready to upload';
     
     return Container(
       padding: const EdgeInsets.all(16),
@@ -266,7 +186,7 @@ class _ProcessingScreenState extends State<ProcessingScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          if (_controller.isBusy)
+          if (_status == 'uploading' || _status == 'processing')
             Padding(
               padding: const EdgeInsets.only(right: 12),
               child: SizedBox(
@@ -296,7 +216,7 @@ class _ProcessingScreenState extends State<ProcessingScreen> {
   /// Build cancel button widget
   Widget _buildCancelButton() {
     return ElevatedButton(
-      onPressed: _controller.isBusy ? () => _showCancelDialog() : null,
+      onPressed: (_status == 'uploading' || _status == 'processing') ? () => _showCancelDialog() : null,
       style: ElevatedButton.styleFrom(
         backgroundColor: Colors.red[400],
         foregroundColor: Colors.white,
@@ -339,7 +259,10 @@ class _ProcessingScreenState extends State<ProcessingScreen> {
             ElevatedButton(
               onPressed: () {
                 Navigator.pop(context); // Close dialog
-                _controller.resetState();
+                // Cancel the analysis using Kotlin service
+                if (_taskId != null) {
+                  MediaAnalysisChannel.cancelAnalysis(_taskId!);
+                }
                 Navigator.pop(context); // Go back to previous screen
               },
               style: ElevatedButton.styleFrom(

@@ -14,6 +14,32 @@ class MainActivity : FlutterActivity() {
 
     private val CHANNEL = "android_intent/android_intent"
     private val FACT_CHECK_CHANNEL = "fact_check_channel"
+    private val MEDIA_ANALYSIS_CHANNEL = "com.example.ai_fake_news_detector/media_analysis"
+    
+    companion object {
+        private var mediaAnalysisChannel: MethodChannel? = null
+        
+        /**
+         * Send analysis result to Flutter
+         */
+        fun sendAnalysisResult(resultData: Map<String, Any>) {
+            mediaAnalysisChannel?.invokeMethod("onAnalysisResult", resultData)
+        }
+        
+        /**
+         * Send analysis error to Flutter
+         */
+        fun sendAnalysisError(errorData: Map<String, Any>) {
+            mediaAnalysisChannel?.invokeMethod("onAnalysisError", errorData)
+        }
+        
+        /**
+         * Send analysis cancellation to Flutter
+         */
+        fun sendAnalysisCancellation(cancellationData: Map<String, Any>) {
+            mediaAnalysisChannel?.invokeMethod("onAnalysisCancellation", cancellationData)
+        }
+    }
     
     override fun onCreate(savedInstanceState: android.os.Bundle?) {
         super.onCreate(savedInstanceState)
@@ -131,6 +157,72 @@ class MainActivity : FlutterActivity() {
                         println("MainActivity: Requesting to ignore battery optimization")
                         requestIgnoreBatteryOptimizations()
                         result.success(true)
+                    }
+                    else -> result.notImplemented()
+                }
+            }
+            
+        // Media Analysis Channel for background processing
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, MEDIA_ANALYSIS_CHANNEL)
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "startAnalysis" -> {
+                        val filePath = call.argument<String>("filePath")
+                        val fileType = call.argument<String>("fileType")
+                        val taskId = call.argument<String>("taskId")
+                        
+                        if (filePath != null && fileType != null && taskId != null) {
+                            try {
+                                MediaAnalysisService.startAnalysis(this, filePath, fileType, taskId)
+                                result.success(mapOf("status" to "started", "taskId" to taskId))
+                            } catch (e: Exception) {
+                                result.error("START_FAILED", "Failed to start analysis: ${e.message}", null)
+                            }
+                        } else {
+                            result.error("INVALID_ARGS", "Invalid arguments", null)
+                        }
+                    }
+                    "cancelAnalysis" -> {
+                        val taskId = call.argument<String>("taskId")
+                        if (taskId != null) {
+                            try {
+                                MediaAnalysisService.cancelAnalysis(this, taskId)
+                                result.success(mapOf("status" to "cancelled", "taskId" to taskId))
+                            } catch (e: Exception) {
+                                result.error("CANCEL_FAILED", "Failed to cancel analysis: ${e.message}", null)
+                            }
+                        } else {
+                            result.error("INVALID_ARGS", "Invalid arguments", null)
+                        }
+                    }
+                    "startBackgroundWork" -> {
+                        val filePath = call.argument<String>("filePath")
+                        val fileType = call.argument<String>("fileType")
+                        val taskId = call.argument<String>("taskId")
+                        
+                        if (filePath != null && fileType != null && taskId != null) {
+                            try {
+                                MediaProcessingWorker.enqueueWork(this, filePath, fileType, taskId)
+                                result.success(mapOf("status" to "enqueued", "taskId" to taskId))
+                            } catch (e: Exception) {
+                                result.error("ENQUEUE_FAILED", "Failed to enqueue work: ${e.message}", null)
+                            }
+                        } else {
+                            result.error("INVALID_ARGS", "Invalid arguments", null)
+                        }
+                    }
+                    "cancelBackgroundWork" -> {
+                        val taskId = call.argument<String>("taskId")
+                        if (taskId != null) {
+                            try {
+                                MediaProcessingWorker.cancelWork(this, taskId)
+                                result.success(mapOf("status" to "cancelled", "taskId" to taskId))
+                            } catch (e: Exception) {
+                                result.error("CANCEL_FAILED", "Failed to cancel work: ${e.message}", null)
+                            }
+                        } else {
+                            result.error("INVALID_ARGS", "Invalid arguments", null)
+                        }
                     }
                     else -> result.notImplemented()
                 }

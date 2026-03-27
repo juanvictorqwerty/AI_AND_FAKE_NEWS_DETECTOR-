@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:video_player/video_player.dart';
 import 'package:ai_fake_news_detector/services/media_picker_service.dart';
-import 'package:ai_fake_news_detector/controllers/media_upload_controller.dart';
+import 'package:ai_fake_news_detector/services/media_analysis_channel.dart';
 import 'package:ai_fake_news_detector/models/analysis_result.dart';
 import 'package:ai_fake_news_detector/utils/global.colors.dart';
 import 'package:ai_fake_news_detector/widgets/big_button.global.dart';
@@ -30,7 +30,6 @@ class MediaResultPage extends StatefulWidget {
 
 class _MediaResultPageState extends State<MediaResultPage> {
   final MediaPickerService _mediaPickerService = Get.find<MediaPickerService>();
-  final MediaUploadController _uploadController = Get.find<MediaUploadController>();
   
   // State variables
   String? _filePath;
@@ -39,6 +38,10 @@ class _MediaResultPageState extends State<MediaResultPage> {
   int? _videoDuration;
   VideoPlayerController? _videoController;
   bool _isVideoPlaying = false;
+  AnalysisResult? _analysisResult;
+  bool _isLoading = true;
+  String? _error;
+  String? _taskId;
   
   @override
   void initState() {
@@ -46,6 +49,29 @@ class _MediaResultPageState extends State<MediaResultPage> {
     // Initialize video controller if needed
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initializeMedia();
+    });
+    // Listen for analysis results
+    _setupAnalysisListener();
+  }
+  
+  /// Setup listener for analysis results from Kotlin service
+  void _setupAnalysisListener() {
+    MediaAnalysisChannel.setOnAnalysisResult((resultData) {
+      if (mounted) {
+        setState(() {
+          _analysisResult = AnalysisResult.fromJson(resultData);
+          _isLoading = false;
+        });
+      }
+    });
+    
+    MediaAnalysisChannel.setOnAnalysisError((errorData) {
+      if (mounted) {
+        setState(() {
+          _error = errorData['error'] ?? 'Unknown error occurred';
+          _isLoading = false;
+        });
+      }
     });
   }
   
@@ -314,7 +340,46 @@ class _MediaResultPageState extends State<MediaResultPage> {
   
   /// Build analysis result widget
   Widget _buildAnalysisResult() {
-    final result = _uploadController.analysisResult.value;
+    if (_isLoading) {
+      return Container(
+        margin: const EdgeInsets.only(top: 16),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.grey[100],
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey[300]!),
+        ),
+        child: const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+    
+    if (_error != null) {
+      return Container(
+        margin: const EdgeInsets.only(top: 16),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.red[50],
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.red[300]!),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.error_outline, color: Colors.red[700]),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                _error!,
+                style: TextStyle(color: Colors.red[700]),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    
+    final result = _analysisResult;
     
     if (result == null) {
       return const SizedBox.shrink();
@@ -444,30 +509,30 @@ class _MediaResultPageState extends State<MediaResultPage> {
       return const SizedBox.shrink();
     }
     
-    final hasResult = _uploadController.analysisResult.value != null;
-    final isFailed = _uploadController.isFailed;
+    final hasResult = _analysisResult != null;
+    final hasError = _error != null;
     
     return Column(
       children: [
         const SizedBox(height: 24),
         
-        // Show retry button if failed
-        if (isFailed)
+        // Show retry button if error
+        if (hasError)
           BigButton(
             text: 'Retry Upload',
             onTap: () {
-              _uploadController.retry();
+              _taskId = DateTime.now().millisecondsSinceEpoch.toString();
+              MediaAnalysisChannel.startAnalysis(_filePath!, _fileType!, _taskId!);
               Navigator.pushNamed(context, '/processing');
             },
             color: Colors.orange,
           ),
         
         // Show upload new button if completed or no result
-        if (hasResult || !isFailed)
+        if (hasResult || !hasError)
           BigButton(
             text: 'Upload New File',
             onTap: () {
-              _uploadController.resetState();
               Navigator.pop(context);
             },
             color: Colors.green,
@@ -479,7 +544,6 @@ class _MediaResultPageState extends State<MediaResultPage> {
         BigButton(
           text: 'Back to Home',
           onTap: () {
-            _uploadController.resetState();
             Navigator.popUntil(context, (route) => route.isFirst);
           },
           color: Colors.grey[600]!,
