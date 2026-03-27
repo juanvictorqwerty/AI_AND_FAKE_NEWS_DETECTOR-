@@ -3,18 +3,19 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:video_player/video_player.dart';
 import 'package:ai_fake_news_detector/services/media_picker_service.dart';
+import 'package:ai_fake_news_detector/controllers/media_upload_controller.dart';
 import 'package:ai_fake_news_detector/utils/global.colors.dart';
 import 'package:ai_fake_news_detector/widgets/big_button.global.dart';
 
 /// Page for picking and previewing media files (images and videos)
-/// 
+///
 /// This page provides:
 /// - Buttons to pick image, video, or any media
 /// - Preview of selected file
 /// - File metadata display (size, duration)
 /// - Loading indicators
 /// - Error messages
-/// - Navigation to result page
+/// - Navigation to processing and result pages
 class MediaPickerPage extends StatefulWidget {
   const MediaPickerPage({super.key});
 
@@ -24,6 +25,7 @@ class MediaPickerPage extends StatefulWidget {
 
 class _MediaPickerPageState extends State<MediaPickerPage> {
   final MediaPickerService _mediaPickerService = Get.find<MediaPickerService>();
+  final MediaUploadController _uploadController = Get.find<MediaUploadController>();
   
   // State variables
   bool _isLoading = false;
@@ -230,19 +232,14 @@ class _MediaPickerPageState extends State<MediaPickerPage> {
     );
   }
   
-  /// Navigate to result page with selected file
+  /// Navigate to processing screen and start upload
   void _proceedWithFile() {
     if (_selectedFilePath != null && _fileType != null) {
-      Navigator.pushNamed(
-        context,
-        '/media-result',
-        arguments: {
-          'filePath': _selectedFilePath,
-          'fileType': _fileType,
-          'fileSize': _fileSize,
-          'videoDuration': _videoDuration,
-        },
-      );
+      // Start upload and processing
+      _uploadController.uploadAndProcess(_selectedFilePath!, _fileType!);
+      
+      // Navigate to processing screen
+      Navigator.pushNamed(context, '/processing');
     }
   }
   
@@ -575,10 +572,10 @@ class _MediaPickerPageState extends State<MediaPickerPage> {
             
             const SizedBox(height: 24),
             
-            // Proceed button (only shown when file is selected)
+            // Upload and Analyze button (only shown when file is selected)
             if (_selectedFilePath != null && !_isLoading)
               BigButton(
-                text: 'Proceed with Selected File',
+                text: 'Upload and Analyze',
                 onTap: _proceedWithFile,
                 color: Colors.deepPurpleAccent,
               ),

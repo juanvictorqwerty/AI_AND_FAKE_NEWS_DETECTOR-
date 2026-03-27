@@ -3,21 +3,24 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:video_player/video_player.dart';
 import 'package:ai_fake_news_detector/services/media_picker_service.dart';
+import 'package:ai_fake_news_detector/controllers/media_upload_controller.dart';
+import 'package:ai_fake_news_detector/models/analysis_result.dart';
 import 'package:ai_fake_news_detector/utils/global.colors.dart';
 import 'package:ai_fake_news_detector/widgets/big_button.global.dart';
 
-/// Page for displaying the selected media file
-/// 
+/// Page for displaying the selected media file and analysis results
+///
 /// This page receives:
 /// - filePath: path to the selected file
 /// - fileType: 'image' or 'video'
 /// - fileSize: file size in bytes
 /// - videoDuration: video duration in seconds (for videos only)
-/// 
+///
 /// It displays:
 /// - Preview of the file
 /// - File metadata
-/// - Option to upload or process the file
+/// - Analysis results (AI/Human label, confidence, probabilities)
+/// - Option to upload new file or retry
 class MediaResultPage extends StatefulWidget {
   const MediaResultPage({super.key});
 
@@ -27,6 +30,7 @@ class MediaResultPage extends StatefulWidget {
 
 class _MediaResultPageState extends State<MediaResultPage> {
   final MediaPickerService _mediaPickerService = Get.find<MediaPickerService>();
+  final MediaUploadController _uploadController = Get.find<MediaUploadController>();
   
   // State variables
   String? _filePath;
@@ -308,33 +312,175 @@ class _MediaResultPageState extends State<MediaResultPage> {
     );
   }
   
+  /// Build analysis result widget
+  Widget _buildAnalysisResult() {
+    final result = _uploadController.analysisResult.value;
+    
+    if (result == null) {
+      return const SizedBox.shrink();
+    }
+    
+    return Container(
+      margin: const EdgeInsets.only(top: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: result.isAi ? Colors.red[50] : Colors.green[50],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: result.isAi ? Colors.red[300]! : Colors.green[300]!,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Label and confidence
+          Row(
+            children: [
+              Icon(
+                result.isAi ? Icons.smart_toy : Icons.person,
+                color: result.isAi ? Colors.red[700] : Colors.green[700],
+                size: 32,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      result.label.toUpperCase(),
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: result.isAi ? Colors.red[700] : Colors.green[700],
+                      ),
+                    ),
+                    Text(
+                      'Confidence: ${result.confidencePercentage}',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.grey[700],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          
+          const SizedBox(height: 16),
+          
+          // Probabilities
+          _buildProbabilityBar('AI', result.aiProbability, Colors.red[400]!),
+          const SizedBox(height: 8),
+          _buildProbabilityBar('Human', result.humanProbability, Colors.green[400]!),
+          
+          const SizedBox(height: 16),
+          
+          // Error message if any
+          if (result.hasError)
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.red[100],
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.error_outline, color: Colors.red[700]),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      result.error!,
+                      style: TextStyle(color: Colors.red[700]),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+  
+  /// Build probability bar widget
+  Widget _buildProbabilityBar(String label, double value, Color color) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            Text(
+              '${(value * 100).toStringAsFixed(1)}%',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        LinearProgressIndicator(
+          value: value,
+          backgroundColor: Colors.grey[300],
+          valueColor: AlwaysStoppedAnimation<Color>(color),
+          minHeight: 8,
+        ),
+      ],
+    );
+  }
+  
   /// Build action buttons
   Widget _buildActionButtons() {
     if (_filePath == null) {
       return const SizedBox.shrink();
     }
     
+    final hasResult = _uploadController.analysisResult.value != null;
+    final isFailed = _uploadController.isFailed;
+    
     return Column(
       children: [
         const SizedBox(height: 24),
-        BigButton(
-          text: 'Upload to Server',
-          onTap: () {
-            // TODO: Implement upload functionality
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Upload functionality coming soon!'),
-                backgroundColor: Colors.orange,
-              ),
-            );
-          },
-          color: Colors.green,
-        ),
+        
+        // Show retry button if failed
+        if (isFailed)
+          BigButton(
+            text: 'Retry Upload',
+            onTap: () {
+              _uploadController.retry();
+              Navigator.pushNamed(context, '/processing');
+            },
+            color: Colors.orange,
+          ),
+        
+        // Show upload new button if completed or no result
+        if (hasResult || !isFailed)
+          BigButton(
+            text: 'Upload New File',
+            onTap: () {
+              _uploadController.resetState();
+              Navigator.pop(context);
+            },
+            color: Colors.green,
+          ),
+        
         const SizedBox(height: 12),
+        
+        // Back button
         BigButton(
-          text: 'Pick Another File',
+          text: 'Back to Home',
           onTap: () {
-            Navigator.pop(context);
+            _uploadController.resetState();
+            Navigator.popUntil(context, (route) => route.isFirst);
           },
           color: Colors.grey[600]!,
         ),
@@ -348,7 +494,7 @@ class _MediaResultPageState extends State<MediaResultPage> {
       appBar: AppBar(
         backgroundColor: GlobalColors.mainColor,
         title: const Text(
-          'Selected Media',
+          'Analysis Result',
           style: TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.bold,
@@ -369,6 +515,9 @@ class _MediaResultPageState extends State<MediaResultPage> {
             
             // File info
             _buildFileInfo(),
+            
+            // Analysis result
+            _buildAnalysisResult(),
             
             // Action buttons
             _buildActionButtons(),
