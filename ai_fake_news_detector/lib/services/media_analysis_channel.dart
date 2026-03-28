@@ -1,175 +1,143 @@
 import 'dart:async';
 import 'package:flutter/services.dart';
 
-/// Platform channel for communicating with Kotlin media analysis services
+/// Singleton channel between Flutter and the Kotlin MediaAnalysisService.
 ///
-/// This channel handles:
-/// - Starting background analysis
-/// - Cancelling background analysis
-/// - Receiving analysis results
-/// - Receiving analysis errors
-/// - Receiving cancellation notifications
+/// FIX 1 – Listener lists instead of single-slot callbacks.
+///   Previously every call to setOnAnalysisResult() / setOnAnalysisError()
+///   silently replaced the previous subscriber, so whichever screen registered
+///   last was the only one that ever received the event.  Now every subscriber
+///   gets called and can remove itself independently.
+///
+/// FIX 2 – Progress / status stream.
+///   A broadcast StreamController carries upload-progress and intermediate
+///   status updates so ProcessingScreen can drive its UI without polling.
+///
+/// FIX 3 – taskId threading.
+///   startAnalysis() returns the taskId it generated so callers can pass it
+///   through route arguments and use it for cancellation.
 class MediaAnalysisChannel {
-  static const MethodChannel _channel = MethodChannel('com.example.ai_fake_news_detector/media_analysis');
-  
-  // Callbacks for analysis events
-  static Function(Map<String, dynamic>)? _onAnalysisResult;
-  static Function(Map<String, dynamic>)? _onAnalysisError;
-  static Function(Map<String, dynamic>)? _onAnalysisCancellation;
-  
-  /// Initialize the platform channel
+  MediaAnalysisChannel._();
+
+  static const MethodChannel _channel =
+      MethodChannel('com.example.ai_fake_news_detector/media_analysis');
+
+  // --------------------------------------------------------------------------
+  // Internal listener lists (Fix 1)
+  // --------------------------------------------------------------------------
+  static final List<void Function(Map<String, dynamic>)> _resultListeners = [];
+  static final List<void Function(Map<String, dynamic>)> _errorListeners = [];
+  static final List<void Function(Map<String, dynamic>)> _cancellationListeners = [];
+
+  // --------------------------------------------------------------------------
+  // Progress stream (Fix 2)
+  // --------------------------------------------------------------------------
+  static final StreamController<AnalysisProgressEvent> _progressController =
+      StreamController<AnalysisProgressEvent>.broadcast();
+
+  /// Subscribe to upload / processing progress updates.
+  static Stream<AnalysisProgressEvent> get progressStream =>
+      _progressController.stream;
+
+  // --------------------------------------------------------------------------
+  // Bootstrap – call once from main() or MainActivity equivalent
+  // --------------------------------------------------------------------------
   static void initialize() {
     _channel.setMethodCallHandler(_handleMethodCall);
-    print('MediaAnalysisChannel: Initialized');
   }
-  
-  /// Handle method calls from Kotlin
-  static Future<dynamic> _handleMethodCall(MethodCall call) async {
-    print('MediaAnalysisChannel: Received method call: ${call.method}');
-    
+
+  static Future<void> _handleMethodCall(MethodCall call) async {
     switch (call.method) {
       case 'onAnalysisResult':
-        final resultData = Map<String, dynamic>.from(call.arguments);
-        print('MediaAnalysisChannel: Analysis result received: ${resultData['taskId']}');
-        _onAnalysisResult?.call(resultData);
+        final data = Map<String, dynamic>.from(call.arguments as Map);
+        for (final cb in List.of(_resultListeners)) {
+          cb(data);
+        }
         break;
-        
+
       case 'onAnalysisError':
-        final errorData = Map<String, dynamic>.from(call.arguments);
-        print('MediaAnalysisChannel: Analysis error received: ${errorData['taskId']}');
-        _onAnalysisError?.call(errorData);
+        final data = Map<String, dynamic>.from(call.arguments as Map);
+        for (final cb in List.of(_errorListeners)) {
+          cb(data);
+        }
         break;
-        
-      case 'onAnalysisCancellation':
-        final cancellationData = Map<String, dynamic>.from(call.arguments);
-        print('MediaAnalysisChannel: Analysis cancellation received: ${cancellationData['taskId']}');
-        _onAnalysisCancellation?.call(cancellationData);
+
+      case 'onAnalysisCancelled':
+        final data = Map<String, dynamic>.from(call.arguments as Map);
+        for (final cb in List.of(_cancellationListeners)) {
+          cb(data);
+        }
         break;
-        
-      default:
-        print('MediaAnalysisChannel: Unknown method call: ${call.method}');
+
+      // Fix 2: Kotlin service sends progress events here
+      case 'onAnalysisProgress':
+        final data = Map<String, dynamic>.from(call.arguments as Map);
+        _progressController.add(AnalysisProgressEvent(
+          taskId: data['taskId'] as String,
+          status: data['status'] as String,
+          progress: (data['progress'] as num?)?.toDouble() ?? 0.0,
+        ));
+        break;
     }
   }
-  
-  /// Set callback for analysis results
-  static void setOnAnalysisResult(Function(Map<String, dynamic>) callback) {
-    _onAnalysisResult = callback;
-    print('MediaAnalysisChannel: OnAnalysisResult callback set');
+
+  // --------------------------------------------------------------------------
+  // Subscription management (Fix 1)
+  // --------------------------------------------------------------------------
+
+  static void addOnAnalysisResult(void Function(Map<String, dynamic>) cb) =>
+      _resultListeners.add(cb);
+
+  static void removeOnAnalysisResult(void Function(Map<String, dynamic>) cb) =>
+      _resultListeners.remove(cb);
+
+  static void addOnAnalysisError(void Function(Map<String, dynamic>) cb) =>
+      _errorListeners.add(cb);
+
+  static void removeOnAnalysisError(void Function(Map<String, dynamic>) cb) =>
+      _errorListeners.remove(cb);
+
+  static void addOnAnalysisCancelled(void Function(Map<String, dynamic>) cb) =>
+      _cancellationListeners.add(cb);
+
+  static void removeOnAnalysisCancelled(
+          void Function(Map<String, dynamic>) cb) =>
+      _cancellationListeners.remove(cb);
+
+  // --------------------------------------------------------------------------
+  // Outbound calls to Kotlin
+  // --------------------------------------------------------------------------
+
+  /// Start analysis and return the generated taskId (Fix 3).
+  static Future<String> startAnalysis(
+      String filePath, String fileType) async {
+    final taskId = DateTime.now().millisecondsSinceEpoch.toString();
+    await _channel.invokeMethod('startAnalysis', {
+      'filePath': filePath,
+      'fileType': fileType,
+      'taskId': taskId,
+    });
+    return taskId;
   }
-  
-  /// Set callback for analysis errors
-  static void setOnAnalysisError(Function(Map<String, dynamic>) callback) {
-    _onAnalysisError = callback;
-    print('MediaAnalysisChannel: OnAnalysisError callback set');
+
+  static Future<void> cancelAnalysis(String taskId) async {
+    await _channel.invokeMethod('cancelAnalysis', {'taskId': taskId});
   }
-  
-  /// Set callback for analysis cancellations
-  static void setOnAnalysisCancellation(Function(Map<String, dynamic>) callback) {
-    _onAnalysisCancellation = callback;
-    print('MediaAnalysisChannel: OnAnalysisCancellation callback set');
-  }
-  
-  /// Start background analysis using foreground service
-  ///
-  /// [filePath] - Path to the file to analyze
-  /// [fileType] - Type of file ('image' or 'video')
-  /// [taskId] - Unique task identifier
-  ///
-  /// Returns a Map with status and taskId
-  static Future<Map<String, dynamic>> startAnalysis(String filePath, String fileType, String taskId) async {
-    try {
-      print('MediaAnalysisChannel: Starting analysis for task: $taskId');
-      
-      final result = await _channel.invokeMethod('startAnalysis', {
-        'filePath': filePath,
-        'fileType': fileType,
-        'taskId': taskId,
-      });
-      
-      final resultData = Map<String, dynamic>.from(result);
-      print('MediaAnalysisChannel: Analysis started: ${resultData['status']}');
-      return resultData;
-    } on PlatformException catch (e) {
-      print('MediaAnalysisChannel: Error starting analysis: ${e.message}');
-      throw Exception('Failed to start analysis: ${e.message}');
-    }
-  }
-  
-  /// Cancel background analysis
-  ///
-  /// [taskId] - Unique task identifier
-  ///
-  /// Returns a Map with status and taskId
-  static Future<Map<String, dynamic>> cancelAnalysis(String taskId) async {
-    try {
-      print('MediaAnalysisChannel: Cancelling analysis for task: $taskId');
-      
-      final result = await _channel.invokeMethod('cancelAnalysis', {
-        'taskId': taskId,
-      });
-      
-      final resultData = Map<String, dynamic>.from(result);
-      print('MediaAnalysisChannel: Analysis cancelled: ${resultData['status']}');
-      return resultData;
-    } on PlatformException catch (e) {
-      print('MediaAnalysisChannel: Error cancelling analysis: ${e.message}');
-      throw Exception('Failed to cancel analysis: ${e.message}');
-    }
-  }
-  
-  /// Start background work using WorkManager
-  ///
-  /// [filePath] - Path to the file to analyze
-  /// [fileType] - Type of file ('image' or 'video')
-  /// [taskId] - Unique task identifier
-  ///
-  /// Returns a Map with status and taskId
-  static Future<Map<String, dynamic>> startBackgroundWork(String filePath, String fileType, String taskId) async {
-    try {
-      print('MediaAnalysisChannel: Starting background work for task: $taskId');
-      
-      final result = await _channel.invokeMethod('startBackgroundWork', {
-        'filePath': filePath,
-        'fileType': fileType,
-        'taskId': taskId,
-      });
-      
-      final resultData = Map<String, dynamic>.from(result);
-      print('MediaAnalysisChannel: Background work started: ${resultData['status']}');
-      return resultData;
-    } on PlatformException catch (e) {
-      print('MediaAnalysisChannel: Error starting background work: ${e.message}');
-      throw Exception('Failed to start background work: ${e.message}');
-    }
-  }
-  
-  /// Cancel background work
-  ///
-  /// [taskId] - Unique task identifier
-  ///
-  /// Returns a Map with status and taskId
-  static Future<Map<String, dynamic>> cancelBackgroundWork(String taskId) async {
-    try {
-      print('MediaAnalysisChannel: Cancelling background work for task: $taskId');
-      
-      final result = await _channel.invokeMethod('cancelBackgroundWork', {
-        'taskId': taskId,
-      });
-      
-      final resultData = Map<String, dynamic>.from(result);
-      print('MediaAnalysisChannel: Background work cancelled: ${resultData['status']}');
-      return resultData;
-    } on PlatformException catch (e) {
-      print('MediaAnalysisChannel: Error cancelling background work: ${e.message}');
-      throw Exception('Failed to cancel background work: ${e.message}');
-    }
-  }
-  
-  /// Remove all callbacks
-  static void dispose() {
-    _onAnalysisResult = null;
-    _onAnalysisError = null;
-    _onAnalysisCancellation = null;
-    print('MediaAnalysisChannel: Disposed');
-  }
+}
+
+/// Carries an intermediate progress event from the Kotlin service.
+class AnalysisProgressEvent {
+  final String taskId;
+
+  /// e.g. 'uploading' | 'processing' | 'completed' | 'failed' | 'cancelled'
+  final String status;
+
+  /// 0.0 – 1.0
+  final double progress;
+
+  const AnalysisProgressEvent({
+    required this.taskId,
+    required this.status,
+    required this.progress,
+  });
 }

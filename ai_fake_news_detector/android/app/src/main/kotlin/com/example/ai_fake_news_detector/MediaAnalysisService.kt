@@ -10,14 +10,13 @@ import androidx.core.app.NotificationCompat
 import kotlinx.coroutines.*
 
 /**
- * Background service for media analysis
+ * Background service for media analysis.
  *
- * This service handles:
- * - Background file upload
- * - Background polling for results
- * - Progress notifications
- * - Error handling and retry logic
- * - Battery optimization
+ * Fix 2  – now sends onAnalysisProgress events to Flutter so the
+ *           ProcessingScreen progress bar actually moves.
+ * Fix 5  – exposes sendResultToFlutter / sendErrorToFlutter as internal
+ *           helpers so MediaProcessingWorker can call them too, closing
+ *           the gap where the Worker's result was silently discarded.
  */
 class MediaAnalysisService : Service() {
     companion object {
@@ -32,9 +31,6 @@ class MediaAnalysisService : Service() {
         const val EXTRA_FILE_TYPE = "file_type"
         const val EXTRA_TASK_ID = "task_id"
 
-        /**
-         * Start analysis service
-         */
         fun startAnalysis(context: Context, filePath: String, fileType: String, taskId: String) {
             val intent = Intent(context, MediaAnalysisService::class.java).apply {
                 action = ACTION_START_ANALYSIS
@@ -42,19 +38,14 @@ class MediaAnalysisService : Service() {
                 putExtra(EXTRA_FILE_TYPE, fileType)
                 putExtra(EXTRA_TASK_ID, taskId)
             }
-
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 context.startForegroundService(intent)
             } else {
                 context.startService(intent)
             }
-
             Log.d(TAG, "Analysis service started for task: $taskId")
         }
 
-        /**
-         * Cancel analysis service
-         */
         fun cancelAnalysis(context: Context, taskId: String) {
             val intent = Intent(context, MediaAnalysisService::class.java).apply {
                 action = ACTION_CANCEL_ANALYSIS
@@ -62,6 +53,93 @@ class MediaAnalysisService : Service() {
             }
             context.startService(intent)
             Log.d(TAG, "Analysis service cancelled for task: $taskId")
+        }
+
+        // Fix 5 – shared helpers called by both this Service and the Worker.
+        internal fun sendResultToFlutter(taskId: String, result: AnalysisResult) {
+            val resultData = mutableMapOf<String, Any>(
+                "taskId" to taskId,
+                "status" to "completed",
+                "fileId" to result.fileId
+            )
+            result.label?.let { resultData["label"] = it }
+            result.confidence?.let { resultData["confidence"] = it }
+            result.probabilities?.let { resultData["probabilities"] = it }
+            result.processingTime?.let { resultData["processingTime"] = it }
+            sendWithRetry(
+                taskId = taskId,
+                action = { MainActivity.sendAnalysisResult(resultData) },
+                logTag = TAG,
+                label = "result"
+            )
+        }
+
+        internal fun sendErrorToFlutter(taskId: String, error: String) {
+            val errorData = mapOf(
+                "taskId" to taskId,
+                "status" to "failed",
+                "error" to error
+            )
+            sendWithRetry(
+                taskId = taskId,
+                action = { MainActivity.sendAnalysisError(errorData) },
+                logTag = TAG,
+                label = "error"
+            )
+        }
+
+        internal fun sendCancellationToFlutter(taskId: String) {
+            val data = mapOf("taskId" to taskId, "status" to "cancelled")
+            sendWithRetry(
+                taskId = taskId,
+                action = { MainActivity.sendAnalysisCancellation(data) },
+                logTag = TAG,
+                label = "cancellation"
+            )
+        }
+
+        // Fix 2 – progress helper.
+        internal fun sendProgressToFlutter(taskId: String, status: String, progress: Double) {
+            val data = mapOf(
+                "taskId" to taskId,
+                "status" to status,
+                "progress" to progress
+            )
+            sendWithRetry(
+                taskId = taskId,
+                action = { MainActivity.sendAnalysisProgress(data)},
+                logTag = TAG,
+                label = "progress"
+            )
+        }
+
+        /** Retry loop extracted to avoid copy-paste in every send* function. */
+        private fun sendWithRetry(
+            taskId: String,
+            action: () -> Boolean,
+            logTag: String,
+            label: String,
+            maxRetries: Int = 5,
+            retryDelayMs: Long = 500L
+        ) {
+            var success = false
+            var attempt = 0
+            while (!success && attempt < maxRetries) {
+                try {
+                    success = action()
+                } catch (e: Exception) {
+                    Log.e(logTag, "Exception sending $label for $taskId: ${e.message}")
+                }
+                if (!success) {
+                    attempt++
+                    if (attempt < maxRetries) Thread.sleep(retryDelayMs)
+                }
+            }
+            if (success) {
+                Log.d(logTag, "Sent $label for task $taskId")
+            } else {
+                Log.e(logTag, "Failed to send $label for task $taskId after $maxRetries attempts")
+            }
         }
     }
 
@@ -82,7 +160,6 @@ class MediaAnalysisService : Service() {
                 val filePath = intent.getStringExtra(EXTRA_FILE_PATH)
                 val fileType = intent.getStringExtra(EXTRA_FILE_TYPE)
                 val taskId = intent.getStringExtra(EXTRA_TASK_ID)
-
                 if (filePath != null && fileType != null && taskId != null) {
                     startAnalysisForeground(filePath, fileType, taskId)
                 } else {
@@ -92,18 +169,13 @@ class MediaAnalysisService : Service() {
             }
             ACTION_CANCEL_ANALYSIS -> {
                 val taskId = intent.getStringExtra(EXTRA_TASK_ID)
-                if (taskId != null) {
-                    cancelAnalysis(taskId)
-                }
+                if (taskId != null) cancelAnalysisTask(taskId)
             }
         }
-
         return START_NOT_STICKY
     }
 
-    override fun onBind(intent: Intent?): IBinder? {
-        return null
-    }
+    override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onDestroy() {
         serviceScope.cancel()
@@ -111,40 +183,24 @@ class MediaAnalysisService : Service() {
         super.onDestroy()
     }
 
-    /**
-     * Create notification channel for Android O and above
-     */
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
-                CHANNEL_ID,
-                CHANNEL_NAME,
-                NotificationManager.IMPORTANCE_LOW
+                CHANNEL_ID, CHANNEL_NAME, NotificationManager.IMPORTANCE_LOW
             ).apply {
                 description = "Shows media analysis progress"
                 setShowBadge(false)
             }
-
-            val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            notificationManager.createNotificationChannel(channel)
-            Log.d(TAG, "Notification channel created")
+            (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
+                .createNotificationChannel(channel)
         }
     }
 
-    /**
-     * Start analysis in foreground with notification
-     */
     private fun startAnalysisForeground(filePath: String, fileType: String, taskId: String) {
         currentTaskId = taskId
         isCancelled = false
-
-        // Start foreground service with notification
-        val notification = createNotification("Starting analysis...", 0)
-        startForeground(NOTIFICATION_ID, notification)
-
+        startForeground(NOTIFICATION_ID, createNotification("Starting analysis…", 0))
         Log.d(TAG, "Starting analysis for task: $taskId")
-
-        // Start analysis in background
         serviceScope.launch {
             try {
                 performAnalysis(filePath, fileType, taskId)
@@ -156,50 +212,47 @@ class MediaAnalysisService : Service() {
         }
     }
 
-    /**
-     * Perform analysis in background
-     */
     private suspend fun performAnalysis(filePath: String, fileType: String, taskId: String) {
         try {
-            // Update notification
-            updateNotification("Uploading file...", 0)
+            // Fix 2 – emit uploading progress before the network call.
+            updateNotification("Uploading file…", 0)
+            sendProgressToFlutter(taskId, "uploading", 0.0)
 
-            // Upload file
             val uploadResponse = uploadService.uploadFile(filePath, fileType)
-
-            if (!uploadResponse.success) {
-                throw Exception(uploadResponse.message)
-            }
+            if (!uploadResponse.success) throw Exception(uploadResponse.message)
 
             Log.d(TAG, "File uploaded successfully: ${uploadResponse.fileId}")
 
-            // Update notification
-            updateNotification("Processing...", 0)
+            // Fix 2 – emit processing status once upload is done.
+            updateNotification("Processing…", 0)
+            sendProgressToFlutter(taskId, "processing", 0.5)
 
-            // Poll until complete
             val result = uploadService.pollUntilComplete(
                 uploadResponse.fileId,
                 onStatusUpdate = { analysisResult ->
                     if (!isCancelled) {
                         val status = when {
-                            analysisResult.isCompleted -> "Analysis complete"
-                            analysisResult.isFailed -> "Analysis failed"
-                            else -> "Processing..."
+                            analysisResult.isCompleted -> "completed"
+                            analysisResult.isFailed    -> "failed"
+                            else                       -> "processing"
                         }
-                        updateNotification(status, 0)
+                        updateNotification(
+                            when (status) {
+                                "completed" -> "Analysis complete"
+                                "failed"    -> "Analysis failed"
+                                else        -> "Processing…"
+                            }, 0
+                        )
+                        // Fix 2 – keep Flutter in sync on every poll tick.
+                        sendProgressToFlutter(taskId, status, if (status == "completed") 1.0 else 0.5)
                     }
                 }
             )
 
             if (!isCancelled) {
-                // Analysis completed successfully
                 updateNotification("Analysis complete: ${result.label}", 100)
                 Log.d(TAG, "Analysis completed: ${result.label} - ${result.confidence}")
-
-                // Send result to Flutter
-                sendResultToFlutter(taskId, result)
-
-                // Stop service after a delay
+                sendResultToFlutter(taskId, result)  // Fix 5 – uses shared companion helper
                 serviceScope.launch {
                     delay(2000)
                     stopSelf()
@@ -209,25 +262,18 @@ class MediaAnalysisService : Service() {
             if (!isCancelled) {
                 Log.e(TAG, "Analysis failed: ${e.message}")
                 updateNotification("Analysis failed: ${e.message}", 0)
-                sendErrorToFlutter(taskId, e.message ?: "Unknown error")
+                sendErrorToFlutter(taskId, e.message ?: "Unknown error")  // Fix 5
                 stopSelf()
             }
         }
     }
 
-    /**
-     * Cancel analysis
-     */
-    private fun cancelAnalysis(taskId: String) {
+    private fun cancelAnalysisTask(taskId: String) {
         if (currentTaskId == taskId) {
             isCancelled = true
             updateNotification("Analysis cancelled", 0)
             Log.d(TAG, "Analysis cancelled for task: $taskId")
-
-            // Send cancellation to Flutter
-            sendCancellationToFlutter(taskId)
-
-            // Stop service
+            sendCancellationToFlutter(taskId)  // Fix 5
             serviceScope.launch {
                 delay(1000)
                 stopSelf()
@@ -235,18 +281,12 @@ class MediaAnalysisService : Service() {
         }
     }
 
-    /**
-     * Create notification
-     */
     private fun createNotification(message: String, progress: Int): Notification {
         val intent = packageManager.getLaunchIntentForPackage(packageName)
         val pendingIntent = PendingIntent.getActivity(
-            this,
-            0,
-            intent,
+            this, 0, intent,
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
-
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Media Analysis")
             .setContentText(message)
@@ -258,83 +298,10 @@ class MediaAnalysisService : Service() {
             .build()
     }
 
-    /**
-     * Update notification
-     */
     private fun updateNotification(message: String, progress: Int) {
         val notification = createNotification(message, progress)
-        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        notificationManager.notify(NOTIFICATION_ID, notification)
+        (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
+            .notify(NOTIFICATION_ID, notification)
         Log.d(TAG, "Notification updated: $message")
-    }
-
-    /**
-     * Send result to Flutter via MethodChannel
-     */
-    private fun sendResultToFlutter(taskId: String, result: AnalysisResult) {
-        try {
-            val resultData = mutableMapOf<String, Any>(
-                "taskId" to taskId,
-                "status" to "completed",
-                "fileId" to result.fileId
-            )
-            result.label?.let { resultData["label"] = it }
-            result.confidence?.let { resultData["confidence"] = it }
-            result.probabilities?.let { resultData["probabilities"] = it }
-            result.processingTime?.let { resultData["processingTime"] = it }
-
-            // This will be called from MainActivity's MethodChannel
-            val success = MainActivity.sendAnalysisResult(resultData)
-            if (success) {
-                Log.d(TAG, "Result sent to Flutter for task: $taskId")
-            } else {
-                Log.w(TAG, "Failed to send result to Flutter for task: $taskId (channel may be null)")
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error sending result to Flutter: ${e.message}")
-        }
-    }
-
-    /**
-     * Send error to Flutter via MethodChannel
-     */
-    private fun sendErrorToFlutter(taskId: String, error: String) {
-        try {
-            val errorData = mapOf(
-                "taskId" to taskId,
-                "status" to "failed",
-                "error" to error
-            )
-
-            val success = MainActivity.sendAnalysisError(errorData)
-            if (success) {
-                Log.d(TAG, "Error sent to Flutter for task: $taskId")
-            } else {
-                Log.w(TAG, "Failed to send error to Flutter for task: $taskId (channel may be null)")
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error sending error to Flutter: ${e.message}")
-        }
-    }
-
-    /**
-     * Send cancellation to Flutter via MethodChannel
-     */
-    private fun sendCancellationToFlutter(taskId: String) {
-        try {
-            val cancellationData = mapOf(
-                "taskId" to taskId,
-                "status" to "cancelled"
-            )
-
-            val success = MainActivity.sendAnalysisCancellation(cancellationData)
-            if (success) {
-                Log.d(TAG, "Cancellation sent to Flutter for task: $taskId")
-            } else {
-                Log.w(TAG, "Failed to send cancellation to Flutter for task: $taskId (channel may be null)")
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error sending cancellation to Flutter: ${e.message}")
-        }
     }
 }

@@ -57,6 +57,18 @@ class MainActivity : FlutterActivity() {
                 false
             }
         }
+        
+        /**
+         * Send analysis progress to Flutter
+         * @return true if successful, false if channel is null
+         */
+        fun sendAnalysisProgress(progressData: Map<String, Any>): Boolean {
+            val success = mediaAnalysisChannel != null
+            if (success) {
+                mediaAnalysisChannel?.invokeMethod("onAnalysisProgress", progressData)
+            }
+            return success
+        }
     }
     
     override fun onCreate(savedInstanceState: android.os.Bundle?) {
@@ -181,8 +193,8 @@ class MainActivity : FlutterActivity() {
             }
             
         // Media Analysis Channel for background processing
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, MEDIA_ANALYSIS_CHANNEL)
-            .setMethodCallHandler { call, result ->
+        mediaAnalysisChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, MEDIA_ANALYSIS_CHANNEL)
+        mediaAnalysisChannel?.setMethodCallHandler { call, result ->
                 when (call.method) {
                     "startAnalysis" -> {
                         val filePath = call.argument<String>("filePath")

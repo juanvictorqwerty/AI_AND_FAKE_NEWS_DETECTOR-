@@ -235,8 +235,8 @@ class _MediaPickerPageState extends State<MediaPickerPage> {
   void _proceedWithFile() {
     if (_selectedFilePath != null && _fileType != null) {
       // Start upload and processing using Kotlin service
-      final taskId = DateTime.now().millisecondsSinceEpoch.toString();
-      MediaAnalysisChannel.startAnalysis(_selectedFilePath!, _fileType!, taskId);
+      // startAnalysis generates its own taskId and returns it
+      MediaAnalysisChannel.startAnalysis(_selectedFilePath!, _fileType!);
       
       // Navigate to processing screen
       Navigator.pushNamed(context, '/processing');
