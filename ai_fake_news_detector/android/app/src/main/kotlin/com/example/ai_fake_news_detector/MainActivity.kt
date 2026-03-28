@@ -9,6 +9,7 @@ import android.provider.Settings
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import com.example.ai_fake_news_detector.VideoFrameProcessingService
 
 class MainActivity : FlutterActivity() {
 
@@ -18,6 +19,10 @@ class MainActivity : FlutterActivity() {
     
     companion object {
         private var mediaAnalysisChannel: MethodChannel? = null
+        private var videoFrameProcessingChannel: MethodChannel? = null
+        
+        private const val MEDIA_ANALYSIS_CHANNEL = "com.example.ai_fake_news_detector/media_analysis"
+        private const val VIDEO_FRAME_PROCESSING_CHANNEL = "com.example.ai_fake_news_detector/video_frame_processing"
         
         /**
          * Send analysis result to Flutter
@@ -68,6 +73,57 @@ class MainActivity : FlutterActivity() {
                 mediaAnalysisChannel?.invokeMethod("onAnalysisProgress", progressData)
             }
             return success
+        }
+        
+        /**
+         * Send video frame processing result to Flutter
+         * @return true if successful, false if channel is null
+         */
+        fun sendVideoFrameResult(resultData: Map<String, Any>): Boolean {
+            return if (videoFrameProcessingChannel != null) {
+                videoFrameProcessingChannel?.invokeMethod("onVideoFrameResult", resultData)
+                true
+            } else {
+                false
+            }
+        }
+        
+        /**
+         * Send video frame processing error to Flutter
+         * @return true if successful, false if channel is null
+         */
+        fun sendVideoFrameError(errorData: Map<String, Any>): Boolean {
+            return if (videoFrameProcessingChannel != null) {
+                videoFrameProcessingChannel?.invokeMethod("onVideoFrameError", errorData)
+                true
+            } else {
+                false
+            }
+        }
+        
+        /**
+         * Send video frame processing progress to Flutter
+         * @return true if successful, false if channel is null
+         */
+        fun sendVideoFrameProgress(progressData: Map<String, Any>): Boolean {
+            val success = videoFrameProcessingChannel != null
+            if (success) {
+                videoFrameProcessingChannel?.invokeMethod("onVideoFrameProgress", progressData)
+            }
+            return success
+        }
+        
+        /**
+         * Send video frame processing cancellation to Flutter
+         * @return true if successful, false if channel is null
+         */
+        fun sendVideoFrameCancellation(cancellationData: Map<String, Any>): Boolean {
+            return if (videoFrameProcessingChannel != null) {
+                videoFrameProcessingChannel?.invokeMethod("onVideoFrameCancellation", cancellationData)
+                true
+            } else {
+                false
+            }
         }
     }
     
@@ -195,68 +251,122 @@ class MainActivity : FlutterActivity() {
         // Media Analysis Channel for background processing
         mediaAnalysisChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, MEDIA_ANALYSIS_CHANNEL)
         mediaAnalysisChannel?.setMethodCallHandler { call, result ->
-                when (call.method) {
-                    "startAnalysis" -> {
-                        val filePath = call.argument<String>("filePath")
-                        val fileType = call.argument<String>("fileType")
-                        val taskId = call.argument<String>("taskId")
-                        
-                        if (filePath != null && fileType != null && taskId != null) {
-                            try {
-                                MediaAnalysisService.startAnalysis(this, filePath, fileType, taskId)
-                                result.success(mapOf("status" to "started", "taskId" to taskId))
-                            } catch (e: Exception) {
-                                result.error("START_FAILED", "Failed to start analysis: ${e.message}", null)
-                            }
-                        } else {
-                            result.error("INVALID_ARGS", "Invalid arguments", null)
+            when (call.method) {
+                "startAnalysis" -> {
+                    val filePath = call.argument<String>("filePath")
+                    val fileType = call.argument<String>("fileType")
+                    val taskId = call.argument<String>("taskId")
+                    
+                    if (filePath != null && fileType != null && taskId != null) {
+                        try {
+                            MediaAnalysisService.startAnalysis(this, filePath, fileType, taskId)
+                            result.success(mapOf("status" to "started", "taskId" to taskId))
+                        } catch (e: Exception) {
+                            result.error("START_FAILED", "Failed to start analysis: ${e.message}", null)
                         }
+                    } else {
+                        result.error("INVALID_ARGS", "Invalid arguments", null)
                     }
-                    "cancelAnalysis" -> {
-                        val taskId = call.argument<String>("taskId")
-                        if (taskId != null) {
-                            try {
-                                MediaAnalysisService.cancelAnalysis(this, taskId)
-                                result.success(mapOf("status" to "cancelled", "taskId" to taskId))
-                            } catch (e: Exception) {
-                                result.error("CANCEL_FAILED", "Failed to cancel analysis: ${e.message}", null)
-                            }
-                        } else {
-                            result.error("INVALID_ARGS", "Invalid arguments", null)
-                        }
-                    }
-                    "startBackgroundWork" -> {
-                        val filePath = call.argument<String>("filePath")
-                        val fileType = call.argument<String>("fileType")
-                        val taskId = call.argument<String>("taskId")
-                        
-                        if (filePath != null && fileType != null && taskId != null) {
-                            try {
-                                MediaProcessingWorker.enqueueWork(this, filePath, fileType, taskId)
-                                result.success(mapOf("status" to "enqueued", "taskId" to taskId))
-                            } catch (e: Exception) {
-                                result.error("ENQUEUE_FAILED", "Failed to enqueue work: ${e.message}", null)
-                            }
-                        } else {
-                            result.error("INVALID_ARGS", "Invalid arguments", null)
-                        }
-                    }
-                    "cancelBackgroundWork" -> {
-                        val taskId = call.argument<String>("taskId")
-                        if (taskId != null) {
-                            try {
-                                MediaProcessingWorker.cancelWork(this, taskId)
-                                result.success(mapOf("status" to "cancelled", "taskId" to taskId))
-                            } catch (e: Exception) {
-                                result.error("CANCEL_FAILED", "Failed to cancel work: ${e.message}", null)
-                            }
-                        } else {
-                            result.error("INVALID_ARGS", "Invalid arguments", null)
-                        }
-                    }
-                    else -> result.notImplemented()
                 }
+                "cancelAnalysis" -> {
+                    val taskId = call.argument<String>("taskId")
+                    if (taskId != null) {
+                        try {
+                            MediaAnalysisService.cancelAnalysis(this, taskId)
+                            result.success(mapOf("status" to "cancelled", "taskId" to taskId))
+                        } catch (e: Exception) {
+                            result.error("CANCEL_FAILED", "Failed to cancel analysis: ${e.message}", null)
+                        }
+                    } else {
+                        result.error("INVALID_ARGS", "Invalid arguments", null)
+                    }
+                }
+                "startBackgroundWork" -> {
+                    val filePath = call.argument<String>("filePath")
+                    val fileType = call.argument<String>("fileType")
+                    val taskId = call.argument<String>("taskId")
+                    
+                    if (filePath != null && fileType != null && taskId != null) {
+                        try {
+                            MediaProcessingWorker.enqueueWork(this, filePath, fileType, taskId)
+                            result.success(mapOf("status" to "enqueued", "taskId" to taskId))
+                        } catch (e: Exception) {
+                            result.error("ENQUEUE_FAILED", "Failed to enqueue work: ${e.message}", null)
+                        }
+                    } else {
+                        result.error("INVALID_ARGS", "Invalid arguments", null)
+                    }
+                }
+                "cancelBackgroundWork" -> {
+                    val taskId = call.argument<String>("taskId")
+                    if (taskId != null) {
+                        try {
+                            MediaProcessingWorker.cancelWork(this, taskId)
+                            result.success(mapOf("status" to "cancelled", "taskId" to taskId))
+                        } catch (e: Exception) {
+                            result.error("CANCEL_FAILED", "Failed to cancel work: ${e.message}", null)
+                        }
+                    } else {
+                        result.error("INVALID_ARGS", "Invalid arguments", null)
+                    }
+                }
+                else -> result.notImplemented()
             }
+        }
+        
+        // Video Frame Processing Channel for video frame extraction
+        videoFrameProcessingChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, VIDEO_FRAME_PROCESSING_CHANNEL)
+        videoFrameProcessingChannel?.setMethodCallHandler { call, result ->
+            when (call.method) {
+                "startVideoProcessing" -> {
+                    val videoPath = call.argument<String>("videoPath")
+                    val taskId = call.argument<String>("taskId")
+                    
+                    if (videoPath != null && taskId != null) {
+                        try {
+                            VideoFrameProcessingService.startVideoFrameProcessing(this, videoPath, taskId)
+                            result.success(mapOf("status" to "started", "taskId" to taskId))
+                        } catch (e: Exception) {
+                            result.error("START_FAILED", "Failed to start video frame processing: ${e.message}", null)
+                        }
+                    } else {
+                        result.error("INVALID_ARGS", "Invalid arguments", null)
+                    }
+                }
+                "cancelVideoProcessing" -> {
+                    val taskId = call.argument<String>("taskId")
+                    if (taskId != null) {
+                        try {
+                            VideoFrameProcessingService.cancelVideoFrameProcessing(this, taskId)
+                            result.success(mapOf("status" to "cancelled", "taskId" to taskId))
+                        } catch (e: Exception) {
+                            result.error("CANCEL_FAILED", "Failed to cancel video frame processing: ${e.message}", null)
+                        }
+                    } else {
+                        result.error("INVALID_ARGS", "Invalid arguments", null)
+                    }
+                }
+                "getProcessingProgress" -> {
+                    val taskId = call.argument<String>("taskId")
+                    if (taskId != null) {
+                        val progress = VideoFrameProcessingService.getProcessingProgress(taskId)
+                        result.success(mapOf("progress" to progress, "taskId" to taskId))
+                    } else {
+                        result.error("INVALID_ARGS", "Invalid arguments", null)
+                    }
+                }
+                "getExtractedFrames" -> {
+                    val taskId = call.argument<String>("taskId")
+                    if (taskId != null) {
+                        val framePaths = VideoFrameProcessingService.getExtractedFrames(taskId)
+                        result.success(mapOf("framePaths" to framePaths, "taskId" to taskId))
+                    } else {
+                        result.error("INVALID_ARGS", "Invalid arguments", null)
+                    }
+                }
+                else -> result.notImplemented()
+            }
+        }
     }
     
     /**

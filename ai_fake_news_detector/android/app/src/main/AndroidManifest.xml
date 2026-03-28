@@ -55,6 +55,13 @@
             android:exported="false"
             android:foregroundServiceType="dataSync" />
         
+        <!-- Foreground Service for Video Frame Processing -->
+        <service
+            android:name=".VideoFrameProcessingService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+        
         <!-- Boot Receiver for automatic service startup -->
         <receiver
             android:name=".BootReceiver"
