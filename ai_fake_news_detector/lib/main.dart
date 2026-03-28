@@ -7,8 +7,7 @@ import 'package:ai_fake_news_detector/services/auth_controller.dart';
 import 'package:ai_fake_news_detector/services/fact_check_service.dart';
 import 'package:ai_fake_news_detector/services/notification_service.dart';
 import 'package:ai_fake_news_detector/services/media_picker_service.dart';
-import 'package:ai_fake_news_detector/services/media_api_service.dart';
-import 'package:ai_fake_news_detector/controllers/media_upload_controller.dart';
+import 'package:ai_fake_news_detector/services/media_analysis_channel.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get_navigation/src/root/get_material_app.dart';
 import 'package:get/get.dart';
@@ -25,10 +24,9 @@ Future<void> main() async {
   Get.put(AuthController());
   Get.put(FactCheckService());
   Get.put(MediaPickerService());
-  Get.put(MediaApiService());
   
-  // Initialize controllers
-  Get.put(MediaUploadController());
+  // Initialize platform channel for media analysis
+  MediaAnalysisChannel.initialize();
   
   // Set up MethodChannel before initializing NotificationService
   NotificationService.setupChannel();

@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:video_player/video_player.dart';
 import 'package:ai_fake_news_detector/services/media_picker_service.dart';
-import 'package:ai_fake_news_detector/controllers/media_upload_controller.dart';
+import 'package:ai_fake_news_detector/services/media_analysis_channel.dart';
 import 'package:ai_fake_news_detector/utils/global.colors.dart';
 import 'package:ai_fake_news_detector/widgets/big_button.global.dart';
 
@@ -25,7 +25,6 @@ class MediaPickerPage extends StatefulWidget {
 
 class _MediaPickerPageState extends State<MediaPickerPage> {
   final MediaPickerService _mediaPickerService = Get.find<MediaPickerService>();
-  final MediaUploadController _uploadController = Get.find<MediaUploadController>();
   
   // State variables
   bool _isLoading = false;
@@ -235,8 +234,9 @@ class _MediaPickerPageState extends State<MediaPickerPage> {
   /// Navigate to processing screen and start upload
   void _proceedWithFile() {
     if (_selectedFilePath != null && _fileType != null) {
-      // Start upload and processing
-      _uploadController.uploadAndProcess(_selectedFilePath!, _fileType!);
+      // Start upload and processing using Kotlin service
+      // startAnalysis generates its own taskId and returns it
+      MediaAnalysisChannel.startAnalysis(_selectedFilePath!, _fileType!);
       
       // Navigate to processing screen
       Navigator.pushNamed(context, '/processing');

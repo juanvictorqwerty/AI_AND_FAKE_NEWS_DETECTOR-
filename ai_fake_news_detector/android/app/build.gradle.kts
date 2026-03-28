@@ -49,6 +49,12 @@ dependencies {
     
     // Gson for JSON parsing
     implementation("com.google.code.gson:gson:2.10.1")
+    
+    // WorkManager for background processing
+    implementation("androidx.work:work-runtime-ktx:2.9.0")
+    
+    // AndroidX Core for notifications
+    implementation("androidx.core:core-ktx:1.12.0")
 }
 
 flutter {

@@ -25,7 +25,8 @@ class AnalysisResult {
     // Parse probabilities map
     Map<String, double> parsedProbabilities = {};
     if (json['probabilities'] != null) {
-      final probs = json['probabilities'] as Map<String, dynamic>;
+      // Convert Map<Object?, Object?> from platform channel to Map<String, dynamic>
+      final probs = Map<String, dynamic>.from(json['probabilities'] as Map);
       probs.forEach((key, value) {
         parsedProbabilities[key] = (value as num).toDouble();
       });
@@ -56,7 +57,7 @@ class AnalysisResult {
   }
 
   /// Check if result indicates AI-generated content
-  bool get isAi => label.toLowerCase() == 'ai';
+  bool get isAi => label.toLowerCase() == 'ai' || label.toLowerCase() == 'artificial';
 
   /// Check if result indicates human-generated content
   bool get isHuman => label.toLowerCase() == 'human';
@@ -78,7 +79,7 @@ class AnalysisResult {
 
   /// Get AI probability as percentage string
   String get aiProbabilityPercentage {
-    final aiProb = probabilities['ai'] ?? 0.0;
+    final aiProb = probabilities['ai'] ?? probabilities['artificial'] ?? 0.0;
     return '${(aiProb * 100).toStringAsFixed(1)}%';
   }
 
@@ -89,7 +90,7 @@ class AnalysisResult {
   }
 
   /// Get AI probability value (0.0 to 1.0)
-  double get aiProbability => probabilities['ai'] ?? 0.0;
+  double get aiProbability => probabilities['ai'] ?? probabilities['artificial'] ?? 0.0;
 
   /// Get Human probability value (0.0 to 1.0)
   double get humanProbability => probabilities['human'] ?? 0.0;

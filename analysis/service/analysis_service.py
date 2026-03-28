@@ -17,7 +17,7 @@ class AnalysisService:
     
     def __init__(self):
         """Initialize AI model"""
-        self.model_name = os.getenv('AI_MODEL_NAME', 'Ateeqq/ai-vs-human-image-detector')
+        self.model_name = os.getenv('AI_MODEL_NAME', 'Organika/sdxl-detector')
         self.model = None
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         
