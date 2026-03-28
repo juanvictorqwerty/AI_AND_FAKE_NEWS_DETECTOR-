@@ -1,6 +1,7 @@
 import os
 import asyncio
 from contextlib import asynccontextmanager
+from typing import List
 from fastapi import FastAPI, UploadFile, File, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
@@ -9,7 +10,7 @@ from dotenv import load_dotenv
 from service.minio_service import MinIOService
 from service.analysis_service import AnalysisService
 from controller.upload_controller import UploadController
-from models.schemas import UploadResponse, AnalysisResult, HealthResponse
+from models.schemas import UploadResponse, AnalysisResult, HealthResponse, VideoUploadResponse
 
 # Load environment variables
 load_dotenv()
@@ -149,6 +150,33 @@ async def upload_file(
         raise HTTPException(status_code=503, detail="Service not initialized")
     
     return await upload_controller.upload_file(file, background_tasks)
+
+@app.post("/upload/video", response_model=VideoUploadResponse, tags=["Upload"])
+async def upload_video_frames(
+    files: List[UploadFile] = File(...),
+    background_tasks: BackgroundTasks = None
+):
+    """
+    Upload and analyze multiple video frames with smart aggregation
+    
+    This endpoint accepts up to 60 image files (video frames), processes each
+    using the AI analysis pipeline, and aggregates results using confidence-weighted
+    majority voting.
+    
+    Args:
+        files: List of image files (JPG, JPEG, PNG, WEBP, BMP)
+        background_tasks: FastAPI background tasks
+        
+    Returns:
+        VideoUploadResponse with aggregated analysis results
+        
+    Raises:
+        HTTPException: If validation fails or processing error
+    """
+    if not upload_controller:
+        raise HTTPException(status_code=503, detail="Service not initialized")
+    
+    return await upload_controller.upload_video_frames(files, background_tasks)
 
 @app.get("/results/{file_id}", response_model=AnalysisResult, tags=["Results"])
 async def get_results(file_id: str):
