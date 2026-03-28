@@ -69,7 +69,7 @@ data class AnalysisResult(
                 confidence     = json.optDouble("confidence", 0.0).takeIf { !it.isNaN() },
                 probabilities  = probabilitiesMap.takeIf { it.isNotEmpty() },
                 processingTime = json.optDouble("processing_time", 0.0).takeIf { !it.isNaN() },
-                error          = json.optString("error", null)
+                error          = if (json.isNull("error")) null else json.optString("error", null)
             )
         }
     }
@@ -152,7 +152,7 @@ data class VideoUploadResponse(
                 frames              = framesList,
                 labelDistribution   = labelDistMap,
                 totalProcessingTime = json.optDouble("total_processing_time", 0.0),
-                error               = json.optString("error", null)
+                error               = if (json.isNull("error")) null else json.optString("error", null)
             )
         }
     }

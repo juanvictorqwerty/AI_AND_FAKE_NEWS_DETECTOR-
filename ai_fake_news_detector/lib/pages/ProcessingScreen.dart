@@ -41,6 +41,7 @@ class _ProcessingScreenState extends State<ProcessingScreen> {
   late final void Function(Map<String, dynamic>) _onError;
   late final void Function(Map<String, dynamic>) _onVideoFrameResult;
   late final void Function(Map<String, dynamic>) _onVideoFrameError;
+  late final void Function(Map<String, dynamic>) _onVideoFrameProgress;
   StreamSubscription<AnalysisProgressEvent>? _progressSub;
 
   @override
@@ -100,11 +101,23 @@ class _ProcessingScreenState extends State<ProcessingScreen> {
       }
     };
 
+    _onVideoFrameProgress = (progressData) {
+      debugPrint('ProcessingScreen: Video frame progress received: $progressData');
+      if (mounted && !_isDisposed) {
+        setState(() {
+          _status = progressData['status'] as String? ?? _status;
+          _progress = (progressData['progress'] as num?)?.toDouble() ?? _progress;
+          _frameCount = progressData['frameCount'] as int? ?? _frameCount;
+        });
+      }
+    };
+
     // Fix 1 – add, don't replace.
     MediaAnalysisChannel.addOnAnalysisResult(_onResult);
     MediaAnalysisChannel.addOnAnalysisError(_onError);
     MediaAnalysisChannel.addOnVideoFrameResult(_onVideoFrameResult);
     MediaAnalysisChannel.addOnVideoFrameError(_onVideoFrameError);
+    MediaAnalysisChannel.addOnVideoFrameProgress(_onVideoFrameProgress);
     debugPrint('ProcessingScreen: Listeners registered');
 
     // Fix 2 – drive the progress UI from the stream.
@@ -147,6 +160,7 @@ class _ProcessingScreenState extends State<ProcessingScreen> {
     MediaAnalysisChannel.removeOnAnalysisError(_onError);
     MediaAnalysisChannel.removeOnVideoFrameResult(_onVideoFrameResult);
     MediaAnalysisChannel.removeOnVideoFrameError(_onVideoFrameError);
+    MediaAnalysisChannel.removeOnVideoFrameProgress(_onVideoFrameProgress);
     _progressSub?.cancel();
     debugPrint('ProcessingScreen: Listeners removed');
     super.dispose();

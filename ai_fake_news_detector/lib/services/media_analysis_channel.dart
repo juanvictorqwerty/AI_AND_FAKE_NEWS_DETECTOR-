@@ -26,6 +26,9 @@ class MediaAnalysisChannel {
 
   static const MethodChannel _channel =
       MethodChannel('com.example.ai_fake_news_detector/media_analysis');
+  
+  static const MethodChannel _videoFrameChannel =
+      MethodChannel('com.example.ai_fake_news_detector/video_frame_processing');
 
   // --------------------------------------------------------------------------
   // Internal listener lists (Fix 1)
@@ -54,6 +57,7 @@ class MediaAnalysisChannel {
   // --------------------------------------------------------------------------
   static void initialize() {
     _channel.setMethodCallHandler(_handleMethodCall);
+    _videoFrameChannel.setMethodCallHandler(_handleVideoFrameMethodCall);
   }
 
   static Future<void> _handleMethodCall(MethodCall call) async {
@@ -128,6 +132,29 @@ class MediaAnalysisChannel {
           cb(data);
         }
         break;
+    }
+  }
+
+  static Future<void> _handleVideoFrameMethodCall(MethodCall call) async {
+    debugPrint('MediaAnalysisChannel: Received video frame method call: ${call.method}');
+    
+    switch (call.method) {
+      case 'onVideoFrameProgress':
+        final data = Map<String, dynamic>.from(call.arguments as Map);
+        debugPrint('MediaAnalysisChannel: Video frame progress received: $data');
+        for (final cb in List.of(_videoFrameProgressListeners)) {
+          cb(data);
+        }
+        break;
+      case 'onVideoFrameCancellation':
+        final data = Map<String, dynamic>.from(call.arguments as Map);
+        debugPrint('MediaAnalysisChannel: Video frame cancellation received: $data');
+        for (final cb in List.of(_videoFrameCancellationListeners)) {
+          cb(data);
+        }
+        break;
+      default:
+        debugPrint('MediaAnalysisChannel: Unknown video frame method: ${call.method}');
     }
   }
 
