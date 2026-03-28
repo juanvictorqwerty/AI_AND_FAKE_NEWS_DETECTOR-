@@ -21,23 +21,41 @@ class MainActivity : FlutterActivity() {
         
         /**
          * Send analysis result to Flutter
+         * @return true if successful, false if channel is null
          */
-        fun sendAnalysisResult(resultData: Map<String, Any>) {
-            mediaAnalysisChannel?.invokeMethod("onAnalysisResult", resultData)
+        fun sendAnalysisResult(resultData: Map<String, Any>): Boolean {
+            return if (mediaAnalysisChannel != null) {
+                mediaAnalysisChannel?.invokeMethod("onAnalysisResult", resultData)
+                true
+            } else {
+                false
+            }
         }
         
         /**
          * Send analysis error to Flutter
+         * @return true if successful, false if channel is null
          */
-        fun sendAnalysisError(errorData: Map<String, Any>) {
-            mediaAnalysisChannel?.invokeMethod("onAnalysisError", errorData)
+        fun sendAnalysisError(errorData: Map<String, Any>): Boolean {
+            return if (mediaAnalysisChannel != null) {
+                mediaAnalysisChannel?.invokeMethod("onAnalysisError", errorData)
+                true
+            } else {
+                false
+            }
         }
         
         /**
          * Send analysis cancellation to Flutter
+         * @return true if successful, false if channel is null
          */
-        fun sendAnalysisCancellation(cancellationData: Map<String, Any>) {
-            mediaAnalysisChannel?.invokeMethod("onAnalysisCancellation", cancellationData)
+        fun sendAnalysisCancellation(cancellationData: Map<String, Any>): Boolean {
+            return if (mediaAnalysisChannel != null) {
+                mediaAnalysisChannel?.invokeMethod("onAnalysisCancellation", cancellationData)
+                true
+            } else {
+                false
+            }
         }
     }
     

@@ -284,8 +284,12 @@ class MediaAnalysisService : Service() {
             result.processingTime?.let { resultData["processingTime"] = it }
 
             // This will be called from MainActivity's MethodChannel
-            MainActivity.sendAnalysisResult(resultData)
-            Log.d(TAG, "Result sent to Flutter for task: $taskId")
+            val success = MainActivity.sendAnalysisResult(resultData)
+            if (success) {
+                Log.d(TAG, "Result sent to Flutter for task: $taskId")
+            } else {
+                Log.w(TAG, "Failed to send result to Flutter for task: $taskId (channel may be null)")
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Error sending result to Flutter: ${e.message}")
         }
@@ -302,8 +306,12 @@ class MediaAnalysisService : Service() {
                 "error" to error
             )
 
-            MainActivity.sendAnalysisError(errorData)
-            Log.d(TAG, "Error sent to Flutter for task: $taskId")
+            val success = MainActivity.sendAnalysisError(errorData)
+            if (success) {
+                Log.d(TAG, "Error sent to Flutter for task: $taskId")
+            } else {
+                Log.w(TAG, "Failed to send error to Flutter for task: $taskId (channel may be null)")
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Error sending error to Flutter: ${e.message}")
         }
@@ -319,8 +327,12 @@ class MediaAnalysisService : Service() {
                 "status" to "cancelled"
             )
 
-            MainActivity.sendAnalysisCancellation(cancellationData)
-            Log.d(TAG, "Cancellation sent to Flutter for task: $taskId")
+            val success = MainActivity.sendAnalysisCancellation(cancellationData)
+            if (success) {
+                Log.d(TAG, "Cancellation sent to Flutter for task: $taskId")
+            } else {
+                Log.w(TAG, "Failed to send cancellation to Flutter for task: $taskId (channel may be null)")
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Error sending cancellation to Flutter: ${e.message}")
         }
