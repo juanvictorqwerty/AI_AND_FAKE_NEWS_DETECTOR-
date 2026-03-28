@@ -146,6 +146,13 @@ class MediaAnalysisChannel {
           cb(data);
         }
         break;
+      case 'onVideoFrameError':
+        final data = Map<String, dynamic>.from(call.arguments as Map);
+        debugPrint('MediaAnalysisChannel: Video frame error received: $data');
+        for (final cb in List.of(_videoFrameErrorListeners)) {
+          cb(data);
+        }
+        break;
       case 'onVideoFrameProgress':
         final data = Map<String, dynamic>.from(call.arguments as Map);
         debugPrint('MediaAnalysisChannel: Video frame progress received: $data');

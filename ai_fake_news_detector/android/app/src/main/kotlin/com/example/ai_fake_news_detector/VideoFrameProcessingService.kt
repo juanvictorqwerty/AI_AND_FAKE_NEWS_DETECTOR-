@@ -308,9 +308,16 @@ class VideoFrameProcessingService : Service() {
                                         MainActivity.sendVideoFrameResult(
                                             mapOf(
                                                 "taskId"              to taskId,
+                                                "file_id"             to taskId,
                                                 "status"              to "completed",
+                                                "label"               to uploadResponse.prediction,
                                                 "prediction"          to uploadResponse.prediction,
                                                 "confidence"          to uploadResponse.confidence,
+                                                "probabilities"       to mapOf(
+                                                    "ai" to uploadResponse.confidence,
+                                                    "human" to (1.0 - uploadResponse.confidence)
+                                                ),
+                                                "processing_time"     to uploadResponse.totalProcessingTime,
                                                 "frameCount"          to uploadResponse.frameCount,
                                                 "validFrameCount"     to uploadResponse.validFrameCount,
                                                 "aggregatedScore"     to uploadResponse.aggregatedScore,
