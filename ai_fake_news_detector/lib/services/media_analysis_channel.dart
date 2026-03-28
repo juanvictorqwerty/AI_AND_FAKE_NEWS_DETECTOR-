@@ -28,6 +28,8 @@ class MediaAnalysisChannel {
   static final List<void Function(Map<String, dynamic>)> _resultListeners = [];
   static final List<void Function(Map<String, dynamic>)> _errorListeners = [];
   static final List<void Function(Map<String, dynamic>)> _cancellationListeners = [];
+  static final List<void Function(Map<String, dynamic>)> _videoFrameResultListeners = [];
+  static final List<void Function(Map<String, dynamic>)> _videoFrameErrorListeners = [];
 
   // --------------------------------------------------------------------------
   // Progress stream (Fix 2)
@@ -78,6 +80,21 @@ class MediaAnalysisChannel {
           progress: (data['progress'] as num?)?.toDouble() ?? 0.0,
         ));
         break;
+
+      // Video frame processing events
+      case 'onVideoFrameResult':
+        final data = Map<String, dynamic>.from(call.arguments as Map);
+        for (final cb in List.of(_videoFrameResultListeners)) {
+          cb(data);
+        }
+        break;
+
+      case 'onVideoFrameError':
+        final data = Map<String, dynamic>.from(call.arguments as Map);
+        for (final cb in List.of(_videoFrameErrorListeners)) {
+          cb(data);
+        }
+        break;
     }
   }
 
@@ -103,6 +120,18 @@ class MediaAnalysisChannel {
   static void removeOnAnalysisCancelled(
           void Function(Map<String, dynamic>) cb) =>
       _cancellationListeners.remove(cb);
+
+  static void addOnVideoFrameResult(void Function(Map<String, dynamic>) cb) =>
+      _videoFrameResultListeners.add(cb);
+
+  static void removeOnVideoFrameResult(void Function(Map<String, dynamic>) cb) =>
+      _videoFrameResultListeners.remove(cb);
+
+  static void addOnVideoFrameError(void Function(Map<String, dynamic>) cb) =>
+      _videoFrameErrorListeners.add(cb);
+
+  static void removeOnVideoFrameError(void Function(Map<String, dynamic>) cb) =>
+      _videoFrameErrorListeners.remove(cb);
 
   // --------------------------------------------------------------------------
   // Outbound calls to Kotlin

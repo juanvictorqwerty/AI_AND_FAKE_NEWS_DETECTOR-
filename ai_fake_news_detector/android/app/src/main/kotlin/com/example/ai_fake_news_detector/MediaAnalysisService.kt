@@ -17,6 +17,10 @@ import kotlinx.coroutines.*
  * Fix 5  – exposes sendResultToFlutter / sendErrorToFlutter as internal
  *           helpers so MediaProcessingWorker can call them too, closing
  *           the gap where the Worker's result was silently discarded.
+ * Fix 6  – For video tasks, startVideoFrameProcessing() is called with the
+ *           Service context (not the coroutine 'this'), and performAnalysis()
+ *           returns without calling stopSelf() so the foreground notification
+ *           stays alive while VideoFrameProcessingService does its work.
  */
 class MediaAnalysisService : Service() {
     companion object {
@@ -55,7 +59,6 @@ class MediaAnalysisService : Service() {
             Log.d(TAG, "Analysis service cancelled for task: $taskId")
         }
 
-        // Fix 5 – shared helpers called by both this Service and the Worker.
         internal fun sendResultToFlutter(taskId: String, result: AnalysisResult) {
             val resultData = mutableMapOf<String, Any>(
                 "taskId" to taskId,
@@ -70,7 +73,7 @@ class MediaAnalysisService : Service() {
                 taskId = taskId,
                 action = { MainActivity.sendAnalysisResult(resultData) },
                 logTag = TAG,
-                label = "result"
+                label  = "result"
             )
         }
 
@@ -78,13 +81,13 @@ class MediaAnalysisService : Service() {
             val errorData = mapOf(
                 "taskId" to taskId,
                 "status" to "failed",
-                "error" to error
+                "error"  to error
             )
             sendWithRetry(
                 taskId = taskId,
                 action = { MainActivity.sendAnalysisError(errorData) },
                 logTag = TAG,
-                label = "error"
+                label  = "error"
             )
         }
 
@@ -94,26 +97,24 @@ class MediaAnalysisService : Service() {
                 taskId = taskId,
                 action = { MainActivity.sendAnalysisCancellation(data) },
                 logTag = TAG,
-                label = "cancellation"
+                label  = "cancellation"
             )
         }
 
-        // Fix 2 – progress helper.
         internal fun sendProgressToFlutter(taskId: String, status: String, progress: Double) {
             val data = mapOf(
-                "taskId" to taskId,
-                "status" to status,
+                "taskId"   to taskId,
+                "status"   to status,
                 "progress" to progress
             )
             sendWithRetry(
                 taskId = taskId,
-                action = { MainActivity.sendAnalysisProgress(data)},
+                action = { MainActivity.sendAnalysisProgress(data) },
                 logTag = TAG,
-                label = "progress"
+                label  = "progress"
             )
         }
 
-        /** Retry loop extracted to avoid copy-paste in every send* function. */
         private fun sendWithRetry(
             taskId: String,
             action: () -> Boolean,
@@ -159,7 +160,7 @@ class MediaAnalysisService : Service() {
             ACTION_START_ANALYSIS -> {
                 val filePath = intent.getStringExtra(EXTRA_FILE_PATH)
                 val fileType = intent.getStringExtra(EXTRA_FILE_TYPE)
-                val taskId = intent.getStringExtra(EXTRA_TASK_ID)
+                val taskId   = intent.getStringExtra(EXTRA_TASK_ID)
                 if (filePath != null && fileType != null && taskId != null) {
                     startAnalysisForeground(filePath, fileType, taskId)
                 } else {
@@ -214,55 +215,82 @@ class MediaAnalysisService : Service() {
 
     private suspend fun performAnalysis(filePath: String, fileType: String, taskId: String) {
         try {
-            // Fix 2 – emit uploading progress before the network call.
-            updateNotification("Uploading file…", 0)
-            sendProgressToFlutter(taskId, "uploading", 0.0)
+            if (fileType == "video") {
+                // FIX 6: Pass the Service instance as context, not the coroutine scope.
+                // 'this@MediaAnalysisService' is the android.content.Context needed by
+                // startForegroundService() / startService() inside startVideoFrameProcessing().
+                // Using a bare 'this' inside a suspend fun refers to the coroutine lambda
+                // receiver, which is NOT a Context and produces a wrong/null context error
+                // that silently causes the intent to fail.
+                updateNotification("Extracting video frames…", 0)
+                sendProgressToFlutter(taskId, "extracting_frames", 0.0)
 
-            val uploadResponse = uploadService.uploadFile(filePath, fileType)
-            if (!uploadResponse.success) throw Exception(uploadResponse.message)
+                VideoFrameProcessingService.startVideoFrameProcessing(
+                    context   = this@MediaAnalysisService,  // FIX 6: correct context
+                    videoPath = filePath,
+                    taskId    = taskId
+                )
 
-            Log.d(TAG, "File uploaded successfully: ${uploadResponse.fileId}")
-
-            // Fix 2 – emit processing status once upload is done.
-            updateNotification("Processing…", 0)
-            sendProgressToFlutter(taskId, "processing", 0.5)
-
-            val result = uploadService.pollUntilComplete(
-                uploadResponse.fileId,
-                onStatusUpdate = { analysisResult ->
-                    if (!isCancelled) {
-                        val status = when {
-                            analysisResult.isCompleted -> "completed"
-                            analysisResult.isFailed    -> "failed"
-                            else                       -> "processing"
-                        }
-                        updateNotification(
-                            when (status) {
-                                "completed" -> "Analysis complete"
-                                "failed"    -> "Analysis failed"
-                                else        -> "Processing…"
-                            }, 0
-                        )
-                        // Fix 2 – keep Flutter in sync on every poll tick.
-                        sendProgressToFlutter(taskId, status, if (status == "completed") 1.0 else 0.5)
-                    }
-                }
-            )
-
-            if (!isCancelled) {
-                updateNotification("Analysis complete: ${result.label}", 100)
-                Log.d(TAG, "Analysis completed: ${result.label} - ${result.confidence}")
-                sendResultToFlutter(taskId, result)  // Fix 5 – uses shared companion helper
+                // FIX 6: Do NOT call stopSelf() here. VideoFrameProcessingService is now
+                // running as its own foreground service and will send results directly to
+                // Flutter via MainActivity. MediaAnalysisService's job for video is done
+                // once it hands off — it should stop itself gracefully so it doesn't
+                // consume resources, but it must NOT race with VideoFrameProcessingService.
+                Log.d(TAG, "Video frame processing handed off for task: $taskId")
                 serviceScope.launch {
-                    delay(2000)
+                    delay(1000) // Brief delay so the handoff notification is visible
                     stopSelf()
+                }
+
+            } else {
+                // Image path: upload then poll.
+                updateNotification("Uploading file…", 0)
+                sendProgressToFlutter(taskId, "uploading", 0.0)
+
+                val uploadResponse = uploadService.uploadFile(filePath, fileType)
+                if (!uploadResponse.success) throw Exception(uploadResponse.message)
+
+                Log.d(TAG, "File uploaded successfully: ${uploadResponse.fileId}")
+
+                updateNotification("Processing…", 0)
+                sendProgressToFlutter(taskId, "processing", 0.5)
+
+                val result = uploadService.pollUntilComplete(
+                    uploadResponse.fileId,
+                    onStatusUpdate = { analysisResult ->
+                        if (!isCancelled) {
+                            val status = when {
+                                analysisResult.isCompleted -> "completed"
+                                analysisResult.isFailed    -> "failed"
+                                else                       -> "processing"
+                            }
+                            updateNotification(
+                                when (status) {
+                                    "completed" -> "Analysis complete"
+                                    "failed"    -> "Analysis failed"
+                                    else        -> "Processing…"
+                                }, 0
+                            )
+                            sendProgressToFlutter(taskId, status, if (status == "completed") 1.0 else 0.5)
+                        }
+                    }
+                )
+
+                if (!isCancelled) {
+                    updateNotification("Analysis complete: ${result.label}", 100)
+                    Log.d(TAG, "Analysis completed: ${result.label} - ${result.confidence}")
+                    sendResultToFlutter(taskId, result)
+                    serviceScope.launch {
+                        delay(2000)
+                        stopSelf()
+                    }
                 }
             }
         } catch (e: Exception) {
             if (!isCancelled) {
                 Log.e(TAG, "Analysis failed: ${e.message}")
                 updateNotification("Analysis failed: ${e.message}", 0)
-                sendErrorToFlutter(taskId, e.message ?: "Unknown error")  // Fix 5
+                sendErrorToFlutter(taskId, e.message ?: "Unknown error")
                 stopSelf()
             }
         }
@@ -273,7 +301,7 @@ class MediaAnalysisService : Service() {
             isCancelled = true
             updateNotification("Analysis cancelled", 0)
             Log.d(TAG, "Analysis cancelled for task: $taskId")
-            sendCancellationToFlutter(taskId)  // Fix 5
+            sendCancellationToFlutter(taskId)
             serviceScope.launch {
                 delay(1000)
                 stopSelf()
