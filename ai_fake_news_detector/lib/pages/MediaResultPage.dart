@@ -347,14 +347,44 @@ class _MediaResultPageState extends State<MediaResultPage> {
     final result = _analysisResult;
     if (result == null) return const SizedBox.shrink();
 
+    // Determine colors based on confidence level
+    final bool isLowConfidence = result.confidence < 0.7;
+    final Color backgroundColor;
+    final Color borderColor;
+    final Color iconColor;
+    final Color textColor;
+    final IconData icon;
+
+    if (isLowConfidence) {
+      // Low confidence (< 60%) - use yellow
+      backgroundColor = Colors.yellow[50]!;
+      borderColor = Colors.yellow[300]!;
+      iconColor = Colors.yellow[700]!;
+      textColor = Colors.yellow[700]!;
+      icon = Icons.warning_amber_rounded;
+    } else if (result.isAi) {
+      // High confidence AI - use red
+      backgroundColor = Colors.red[50]!;
+      borderColor = Colors.red[300]!;
+      iconColor = Colors.red[700]!;
+      textColor = Colors.red[700]!;
+      icon = Icons.smart_toy;
+    } else {
+      // High confidence Human - use green
+      backgroundColor = Colors.green[50]!;
+      borderColor = Colors.green[300]!;
+      iconColor = Colors.green[700]!;
+      textColor = Colors.green[700]!;
+      icon = Icons.person;
+    }
+
     return Container(
       margin: const EdgeInsets.only(top: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: result.isAi ? Colors.red[50] : Colors.green[50],
+        color: backgroundColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-            color: result.isAi ? Colors.red[300]! : Colors.green[300]!),
+        border: Border.all(color: borderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -362,9 +392,8 @@ class _MediaResultPageState extends State<MediaResultPage> {
           Row(
             children: [
               Icon(
-                result.isAi ? Icons.smart_toy : Icons.person,
-                color:
-                    result.isAi ? Colors.red[700] : Colors.green[700],
+                icon,
+                color: iconColor,
                 size: 32,
               ),
               const SizedBox(width: 12),
@@ -377,9 +406,7 @@ class _MediaResultPageState extends State<MediaResultPage> {
                       style: TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
-                        color: result.isAi
-                            ? Colors.red[700]
-                            : Colors.green[700],
+                        color: textColor,
                       ),
                     ),
                     Text(
@@ -387,6 +414,14 @@ class _MediaResultPageState extends State<MediaResultPage> {
                       style: TextStyle(
                           fontSize: 16, color: Colors.grey[700]),
                     ),
+                    if (isLowConfidence)
+                      Text(
+                        'Low confidence - result may be unreliable',
+                        style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.yellow[800],
+                            fontStyle: FontStyle.italic),
+                      ),
                   ],
                 ),
               ),
