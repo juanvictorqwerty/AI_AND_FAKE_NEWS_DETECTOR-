@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -19,7 +20,7 @@ class FactCheckService extends GetxService {
   }) async {
     try {
       final url = '$baseUrl/fact-check/search';
-      print('FactCheckService: Calling $url');
+      debugPrint('FactCheckService: Calling $url');
       
       final response = await http.post(
         Uri.parse(url),
@@ -32,7 +33,7 @@ class FactCheckService extends GetxService {
         },
       );
       
-      print('FactCheckService: Response status=${response.statusCode}, body=${response.body}');
+      debugPrint('FactCheckService: Response status=${response.statusCode}, body=${response.body}');
       
       if (response.body.isEmpty) {
         return {
@@ -57,7 +58,7 @@ class FactCheckService extends GetxService {
         };
       }
     } catch (e) {
-      print('FactCheckService: Error $e');
+      debugPrint('FactCheckService: Error $e');
       return {
         'success': false,
         'message': 'Error: ${e.toString()}',

@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -31,11 +32,11 @@ class MediaPickerService extends GetxService {
   Future<Map<String, dynamic>> checkAndRequestMediaPermissions() async {
     try {
       // Log permission check start
-      print('MediaPickerService: Checking media permissions...');
+      debugPrint('MediaPickerService: Checking media permissions...');
       
       // Check if we already have permission cached
       if (_hasMediaPermission == true) {
-        print('MediaPickerService: Permission already granted (cached)');
+        debugPrint('MediaPickerService: Permission already granted (cached)');
         return {'granted': true, 'message': 'Permission already granted'};
       }
       
@@ -45,14 +46,14 @@ class MediaPickerService extends GetxService {
       } else if (Platform.isIOS) {
         return await _handleIOSPermissions();
       } else {
-        print('MediaPickerService: Unsupported platform');
+        debugPrint('MediaPickerService: Unsupported platform');
         return {
           'granted': false,
           'message': 'Unsupported platform for media permissions',
         };
       }
     } catch (e) {
-      print('MediaPickerService: Error checking permissions: $e');
+      debugPrint('MediaPickerService: Error checking permissions: $e');
       return {
         'granted': false,
         'message': 'Error checking permissions: ${e.toString()}',
@@ -75,17 +76,17 @@ class MediaPickerService extends GetxService {
       try {
         imageStatus = await Permission.photos.status;
         videoStatus = await Permission.videos.status;
-        print('MediaPickerService: Android 13+ permissions - Photos: $imageStatus, Videos: $videoStatus');
+        debugPrint('MediaPickerService: Android 13+ permissions - Photos: $imageStatus, Videos: $videoStatus');
       } catch (e) {
-        print('MediaPickerService: Android 13+ permissions not available, trying storage permission');
+        debugPrint('MediaPickerService: Android 13+ permissions not available, trying storage permission');
       }
       
       // Check storage permission for older Android versions
       try {
         storageStatus = await Permission.storage.status;
-        print('MediaPickerService: Storage permission status: $storageStatus');
+        debugPrint('MediaPickerService: Storage permission status: $storageStatus');
       } catch (e) {
-        print('MediaPickerService: Storage permission not available');
+        debugPrint('MediaPickerService: Storage permission not available');
       }
       
       // Determine which permission strategy to use
@@ -98,11 +99,11 @@ class MediaPickerService extends GetxService {
         if (imageStatus.isGranted && videoStatus.isGranted) {
           hasPermission = true;
           permissionType = 'Android 13+ (Photos & Videos)';
-          print('MediaPickerService: Android 13+ permissions already granted');
+          debugPrint('MediaPickerService: Android 13+ permissions already granted');
         } else if (imageStatus.isPermanentlyDenied || videoStatus.isPermanentlyDenied) {
           isPermanentlyDenied = true;
           permissionType = 'Android 13+ (Permanently Denied)';
-          print('MediaPickerService: Android 13+ permissions permanently denied');
+          debugPrint('MediaPickerService: Android 13+ permissions permanently denied');
         }
       }
       
@@ -111,11 +112,11 @@ class MediaPickerService extends GetxService {
         if (storageStatus.isGranted) {
           hasPermission = true;
           permissionType = 'Storage (Android ≤12)';
-          print('MediaPickerService: Storage permission already granted');
+          debugPrint('MediaPickerService: Storage permission already granted');
         } else if (storageStatus.isPermanentlyDenied) {
           isPermanentlyDenied = true;
           permissionType = 'Storage (Permanently Denied)';
-          print('MediaPickerService: Storage permission permanently denied');
+          debugPrint('MediaPickerService: Storage permission permanently denied');
         }
       }
       
@@ -138,15 +139,15 @@ class MediaPickerService extends GetxService {
       }
       
       // Request permissions
-      print('MediaPickerService: Requesting permissions...');
+      debugPrint('MediaPickerService: Requesting permissions...');
       
       // Try Android 13+ permissions first
       if (imageStatus != null && videoStatus != null) {
-        print('MediaPickerService: Requesting Android 13+ permissions...');
+        debugPrint('MediaPickerService: Requesting Android 13+ permissions...');
         final newImageStatus = await Permission.photos.request();
         final newVideoStatus = await Permission.videos.request();
         
-        print('MediaPickerService: Android 13+ request results - Photos: $newImageStatus, Videos: $newVideoStatus');
+        debugPrint('MediaPickerService: Android 13+ request results - Photos: $newImageStatus, Videos: $newVideoStatus');
         
         if (newImageStatus.isGranted && newVideoStatus.isGranted) {
           _hasMediaPermission = true;
@@ -170,10 +171,10 @@ class MediaPickerService extends GetxService {
       
       // Fallback to storage permission for older Android
       if (storageStatus != null) {
-        print('MediaPickerService: Requesting storage permission...');
+        debugPrint('MediaPickerService: Requesting storage permission...');
         final newStorageStatus = await Permission.storage.request();
         
-        print('MediaPickerService: Storage request result: $newStorageStatus');
+        debugPrint('MediaPickerService: Storage request result: $newStorageStatus');
         
         if (newStorageStatus.isGranted) {
           _hasMediaPermission = true;
@@ -201,7 +202,7 @@ class MediaPickerService extends GetxService {
         'message': 'Unable to request media permissions. Please check app settings.',
       };
     } catch (e) {
-      print('MediaPickerService: Error handling Android permissions: $e');
+      debugPrint('MediaPickerService: Error handling Android permissions: $e');
       return {
         'granted': false,
         'message': 'Error handling permissions: ${e.toString()}',
@@ -212,10 +213,10 @@ class MediaPickerService extends GetxService {
   /// Handle iOS permissions
   Future<Map<String, dynamic>> _handleIOSPermissions() async {
     try {
-      print('MediaPickerService: Checking iOS photo library permission...');
+      debugPrint('MediaPickerService: Checking iOS photo library permission...');
       
       final status = await Permission.photos.status;
-      print('MediaPickerService: iOS photo library status: $status');
+      debugPrint('MediaPickerService: iOS photo library status: $status');
       
       if (status.isGranted) {
         _hasMediaPermission = true;
@@ -234,9 +235,9 @@ class MediaPickerService extends GetxService {
       }
       
       // Request permission
-      print('MediaPickerService: Requesting iOS photo library permission...');
+      debugPrint('MediaPickerService: Requesting iOS photo library permission...');
       final newStatus = await Permission.photos.request();
-      print('MediaPickerService: iOS photo library request result: $newStatus');
+      debugPrint('MediaPickerService: iOS photo library request result: $newStatus');
       
       if (newStatus.isGranted) {
         _hasMediaPermission = true;
@@ -257,7 +258,7 @@ class MediaPickerService extends GetxService {
         };
       }
     } catch (e) {
-      print('MediaPickerService: Error handling iOS permissions: $e');
+      debugPrint('MediaPickerService: Error handling iOS permissions: $e');
       return {
         'granted': false,
         'message': 'Error handling permissions: ${e.toString()}',
@@ -270,12 +271,12 @@ class MediaPickerService extends GetxService {
   /// Returns true if settings were opened successfully
   Future<bool> openAppSettings() async {
     try {
-      print('MediaPickerService: Opening app settings...');
+      debugPrint('MediaPickerService: Opening app settings...');
       final opened = await openAppSettings();
-      print('MediaPickerService: App settings opened: $opened');
+      debugPrint('MediaPickerService: App settings opened: $opened');
       return opened;
     } catch (e) {
-      print('MediaPickerService: Error opening app settings: $e');
+      debugPrint('MediaPickerService: Error opening app settings: $e');
       return false;
     }
   }
@@ -284,7 +285,7 @@ class MediaPickerService extends GetxService {
   /// 
   /// Useful when user changes permissions in settings
   void resetPermissionCache() {
-    print('MediaPickerService: Resetting permission cache');
+    debugPrint('MediaPickerService: Resetting permission cache');
     _hasMediaPermission = null;
   }
   
@@ -308,7 +309,7 @@ class MediaPickerService extends GetxService {
         };
       }
       
-      print('MediaPickerService: Picking image from gallery...');
+      debugPrint('MediaPickerService: Picking image from gallery...');
       
       // Pick image from gallery
       final XFile? image = await _picker.pickImage(
@@ -317,31 +318,31 @@ class MediaPickerService extends GetxService {
       );
       
       if (image == null) {
-        print('MediaPickerService: No image selected');
+        debugPrint('MediaPickerService: No image selected');
         return {
           'success': false,
           'message': 'No image selected',
         };
       }
       
-      print('MediaPickerService: Image selected: ${image.path}');
+      debugPrint('MediaPickerService: Image selected: ${image.path}');
       
       // Validate file size
       final file = File(image.path);
       final fileSize = await file.length();
       
-      print('MediaPickerService: Image file size: $fileSize bytes');
+      debugPrint('MediaPickerService: Image file size: $fileSize bytes');
       
       if (fileSize > maxFileSizeBytes) {
         final fileSizeMB = (fileSize / (1024 * 1024)).toStringAsFixed(2);
-        print('MediaPickerService: Image too large: ${fileSizeMB}MB');
+        debugPrint('MediaPickerService: Image too large: ${fileSizeMB}MB');
         return {
           'success': false,
           'message': 'Image must be less than 20MB (current: ${fileSizeMB}MB)',
         };
       }
       
-      print('MediaPickerService: Image validation successful');
+      debugPrint('MediaPickerService: Image validation successful');
       return {
         'success': true,
         'filePath': image.path,
@@ -349,7 +350,7 @@ class MediaPickerService extends GetxService {
         'fileType': 'image',
       };
     } catch (e) {
-      print('MediaPickerService: Error picking image: $e');
+      debugPrint('MediaPickerService: Error picking image: $e');
       return {
         'success': false,
         'message': 'Error picking image: ${e.toString()}',
@@ -377,7 +378,7 @@ class MediaPickerService extends GetxService {
         };
       }
       
-      print('MediaPickerService: Picking video from gallery...');
+      debugPrint('MediaPickerService: Picking video from gallery...');
       
       // Pick video from gallery
       final XFile? video = await _picker.pickVideo(
@@ -386,24 +387,24 @@ class MediaPickerService extends GetxService {
       );
       
       if (video == null) {
-        print('MediaPickerService: No video selected');
+        debugPrint('MediaPickerService: No video selected');
         return {
           'success': false,
           'message': 'No video selected',
         };
       }
       
-      print('MediaPickerService: Video selected: ${video.path}');
+      debugPrint('MediaPickerService: Video selected: ${video.path}');
       
       // Validate file size
       final file = File(video.path);
       final fileSize = await file.length();
       
-      print('MediaPickerService: Video file size: $fileSize bytes');
+      debugPrint('MediaPickerService: Video file size: $fileSize bytes');
       
       if (fileSize > maxFileSizeBytes) {
         final fileSizeMB = (fileSize / (1024 * 1024)).toStringAsFixed(2);
-        print('MediaPickerService: Video too large: ${fileSizeMB}MB');
+        debugPrint('MediaPickerService: Video too large: ${fileSizeMB}MB');
         return {
           'success': false,
           'message': 'Video must be less than 20MB (current: ${fileSizeMB}MB)',
@@ -411,13 +412,13 @@ class MediaPickerService extends GetxService {
       }
       
       // Validate video duration
-      print('MediaPickerService: Validating video duration...');
+      debugPrint('MediaPickerService: Validating video duration...');
       final durationResult = await _validateVideoDuration(video.path);
       if (!durationResult['success']) {
         return durationResult;
       }
       
-      print('MediaPickerService: Video validation successful');
+      debugPrint('MediaPickerService: Video validation successful');
       return {
         'success': true,
         'filePath': video.path,
@@ -426,7 +427,7 @@ class MediaPickerService extends GetxService {
         'duration': durationResult['duration'],
       };
     } catch (e) {
-      print('MediaPickerService: Error picking video: $e');
+      debugPrint('MediaPickerService: Error picking video: $e');
       return {
         'success': false,
         'message': 'Error picking video: ${e.toString()}',
@@ -455,20 +456,20 @@ class MediaPickerService extends GetxService {
         };
       }
       
-      print('MediaPickerService: Picking media from gallery...');
+      debugPrint('MediaPickerService: Picking media from gallery...');
       
       // Pick media from gallery (allows both images and videos)
       final XFile? media = await _picker.pickMedia();
       
       if (media == null) {
-        print('MediaPickerService: No media selected');
+        debugPrint('MediaPickerService: No media selected');
         return {
           'success': false,
           'message': 'No file selected',
         };
       }
       
-      print('MediaPickerService: Media selected: ${media.path}');
+      debugPrint('MediaPickerService: Media selected: ${media.path}');
       
       // Determine file type
       final isVideo = media.path.toLowerCase().endsWith('.mp4') ||
@@ -476,17 +477,17 @@ class MediaPickerService extends GetxService {
                       media.path.toLowerCase().endsWith('.avi') ||
                       media.path.toLowerCase().endsWith('.mkv');
       
-      print('MediaPickerService: Media type: ${isVideo ? 'video' : 'image'}');
+      debugPrint('MediaPickerService: Media type: ${isVideo ? 'video' : 'image'}');
       
       // Validate file size
       final file = File(media.path);
       final fileSize = await file.length();
       
-      print('MediaPickerService: Media file size: $fileSize bytes');
+      debugPrint('MediaPickerService: Media file size: $fileSize bytes');
       
       if (fileSize > maxFileSizeBytes) {
         final fileSizeMB = (fileSize / (1024 * 1024)).toStringAsFixed(2);
-        print('MediaPickerService: Media too large: ${fileSizeMB}MB');
+        debugPrint('MediaPickerService: Media too large: ${fileSizeMB}MB');
         return {
           'success': false,
           'message': 'File must be less than 20MB (current: ${fileSizeMB}MB)',
@@ -495,13 +496,13 @@ class MediaPickerService extends GetxService {
       
       // If video, validate duration
       if (isVideo) {
-        print('MediaPickerService: Validating video duration...');
+        debugPrint('MediaPickerService: Validating video duration...');
         final durationResult = await _validateVideoDuration(media.path);
         if (!durationResult['success']) {
           return durationResult;
         }
         
-        print('MediaPickerService: Video validation successful');
+        debugPrint('MediaPickerService: Video validation successful');
         return {
           'success': true,
           'filePath': media.path,
@@ -511,7 +512,7 @@ class MediaPickerService extends GetxService {
         };
       }
       
-      print('MediaPickerService: Image validation successful');
+      debugPrint('MediaPickerService: Image validation successful');
       return {
         'success': true,
         'filePath': media.path,
@@ -519,7 +520,7 @@ class MediaPickerService extends GetxService {
         'fileType': 'image',
       };
     } catch (e) {
-      print('MediaPickerService: Error picking media: $e');
+      debugPrint('MediaPickerService: Error picking media: $e');
       return {
         'success': false,
         'message': 'Error picking media: ${e.toString()}',
@@ -536,30 +537,30 @@ class MediaPickerService extends GetxService {
   Future<Map<String, dynamic>> _validateVideoDuration(String videoPath) async {
     VideoPlayerController? controller;
     try {
-      print('MediaPickerService: Initializing video controller for duration check...');
+      debugPrint('MediaPickerService: Initializing video controller for duration check...');
       controller = VideoPlayerController.file(File(videoPath));
       await controller.initialize();
       
       final duration = controller.value.duration;
       final durationSeconds = duration.inSeconds;
       
-      print('MediaPickerService: Video duration: $durationSeconds seconds');
+      debugPrint('MediaPickerService: Video duration: $durationSeconds seconds');
       
       if (durationSeconds > maxVideoDurationSeconds) {
-        print('MediaPickerService: Video too long: ${durationSeconds}s');
+        debugPrint('MediaPickerService: Video too long: ${durationSeconds}s');
         return {
           'success': false,
           'message': 'Video must be under 60 seconds (current: ${durationSeconds}s)',
         };
       }
       
-      print('MediaPickerService: Video duration validation passed');
+      debugPrint('MediaPickerService: Video duration validation passed');
       return {
         'success': true,
         'duration': durationSeconds,
       };
     } catch (e) {
-      print('MediaPickerService: Error validating video duration: $e');
+      debugPrint('MediaPickerService: Error validating video duration: $e');
       return {
         'success': false,
         'message': 'Error validating video: ${e.toString()}',
@@ -567,7 +568,7 @@ class MediaPickerService extends GetxService {
     } finally {
       // Clean up controller to free memory
       if (controller != null) {
-        print('MediaPickerService: Disposing video controller...');
+        debugPrint('MediaPickerService: Disposing video controller...');
         await controller.dispose();
       }
     }

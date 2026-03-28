@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -57,7 +58,7 @@ class AuthService extends GetxService {
   }) async {
     try {
       final url = '$baseUrl/auth/signin';
-      print('SignIn URL: $url');
+      debugPrint('SignIn URL: $url');
       
       final response = await http.post(
         Uri.parse(url),
@@ -68,7 +69,7 @@ class AuthService extends GetxService {
         headers: {'Content-Type': 'application/json'},
       );
       
-      print('SignIn Response: status=${response.statusCode}, body=${response.body}');
+      debugPrint('SignIn Response: status=${response.statusCode}, body=${response.body}');
       
       if (response.body.isEmpty) {
         return {'success': false, 'message': 'Empty response. Status: ${response.statusCode}'};
@@ -90,7 +91,7 @@ class AuthService extends GetxService {
         };
       }
     } catch (e) {
-      print('SignIn Error: $e');
+      debugPrint('SignIn Error: $e');
       return {
         'success': false,
         'message': 'Error: ${e.toString()}',
@@ -137,7 +138,7 @@ class AuthService extends GetxService {
   // Anonymous sign up - no email or password required
   Future<Map<String, dynamic>> anonymousSignUp({String? name}) async {
     try {
-      print('anonymousSignUp: Calling $baseUrl/auth/anonymous-signup');
+      debugPrint('anonymousSignUp: Calling $baseUrl/auth/anonymous-signup');
       
       final response = await http.post(
         Uri.parse('$baseUrl/auth/anonymous-signup'),
@@ -145,7 +146,7 @@ class AuthService extends GetxService {
         headers: {'Content-Type': 'application/json'},
       );
       
-      print('anonymousSignUp: Response status=${response.statusCode}, body=${response.body}');
+      debugPrint('anonymousSignUp: Response status=${response.statusCode}, body=${response.body}');
       
       if (response.body.isEmpty) {
         return {'success': false, 'message': 'Server returned empty response. Status: ${response.statusCode}'};
@@ -167,7 +168,7 @@ class AuthService extends GetxService {
         };
       }
     } catch (e) {
-      print('anonymousSignUp: Error $e');
+      debugPrint('anonymousSignUp: Error $e');
       return {
         'success': false,
         'message': 'Error: ${e.toString()}',

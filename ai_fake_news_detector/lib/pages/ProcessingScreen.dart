@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:ai_fake_news_detector/services/media_analysis_channel.dart';
 import 'package:ai_fake_news_detector/utils/global.colors.dart';
@@ -45,8 +46,10 @@ class _ProcessingScreenState extends State<ProcessingScreen> {
   @override
   void initState() {
     super.initState();
+    debugPrint('ProcessingScreen: initState called');
 
     _onResult = (resultData) {
+      debugPrint('ProcessingScreen: Analysis result received: $resultData');
       if (!_hasNavigated && mounted && !_isDisposed) {
         _hasNavigated = true;
         // Pass file metadata alongside result so MediaResultPage can display
@@ -65,12 +68,14 @@ class _ProcessingScreenState extends State<ProcessingScreen> {
     };
 
     _onError = (errorData) {
+      debugPrint('ProcessingScreen: Analysis error received: $errorData');
       if (mounted && !_isDisposed) {
         setState(() => _status = 'failed');
       }
     };
 
     _onVideoFrameResult = (resultData) {
+      debugPrint('ProcessingScreen: Video frame result received: $resultData');
       if (!_hasNavigated && mounted && !_isDisposed) {
         _hasNavigated = true;
         // Pass file metadata alongside result so MediaResultPage can display
@@ -89,6 +94,7 @@ class _ProcessingScreenState extends State<ProcessingScreen> {
     };
 
     _onVideoFrameError = (errorData) {
+      debugPrint('ProcessingScreen: Video frame error received: $errorData');
       if (mounted && !_isDisposed) {
         setState(() => _status = 'failed');
       }
@@ -99,12 +105,14 @@ class _ProcessingScreenState extends State<ProcessingScreen> {
     MediaAnalysisChannel.addOnAnalysisError(_onError);
     MediaAnalysisChannel.addOnVideoFrameResult(_onVideoFrameResult);
     MediaAnalysisChannel.addOnVideoFrameError(_onVideoFrameError);
+    debugPrint('ProcessingScreen: Listeners registered');
 
     // Fix 2 – drive the progress UI from the stream.
     _progressSub =
         MediaAnalysisChannel.progressStream.listen((event) {
       if (!mounted || _isDisposed) return;
       if (event.taskId != _taskId) return;
+      debugPrint('ProcessingScreen: Progress event received: status=${event.status}, progress=${event.progress}');
       setState(() {
         _status = event.status;
         _progress = event.progress;
@@ -118,17 +126,21 @@ class _ProcessingScreenState extends State<ProcessingScreen> {
   void _readArgs() {
     final args = ModalRoute.of(context)?.settings.arguments
         as Map<String, dynamic>?;
+    debugPrint('ProcessingScreen: Route arguments: $args');
+    
     if (args != null) {
       setState(() {
         _taskId = args['taskId'] as String?;
         _filePath = args['filePath'] as String?;
         _fileType = args['fileType'] as String?;
       });
+      debugPrint('ProcessingScreen: TaskId=$_taskId, FilePath=$_filePath, FileType=$_fileType');
     }
   }
 
   @override
   void dispose() {
+    debugPrint('ProcessingScreen: dispose called');
     _isDisposed = true;
     // Fix 1 – remove our specific callbacks, not everyone's.
     MediaAnalysisChannel.removeOnAnalysisResult(_onResult);
@@ -136,6 +148,7 @@ class _ProcessingScreenState extends State<ProcessingScreen> {
     MediaAnalysisChannel.removeOnVideoFrameResult(_onVideoFrameResult);
     MediaAnalysisChannel.removeOnVideoFrameError(_onVideoFrameError);
     _progressSub?.cancel();
+    debugPrint('ProcessingScreen: Listeners removed');
     super.dispose();
   }
 
@@ -385,6 +398,7 @@ class _ProcessingScreenState extends State<ProcessingScreen> {
   }
 
   void _showCancelDialog() {
+    debugPrint('ProcessingScreen: Showing cancel dialog');
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -406,6 +420,7 @@ class _ProcessingScreenState extends State<ProcessingScreen> {
           ElevatedButton(
             onPressed: () {
               Navigator.pop(ctx);
+              debugPrint('ProcessingScreen: Cancel button pressed for taskId: $_taskId');
               // Fix 6 – taskId is now always set, so this call is safe.
               if (_taskId != null) {
                 MediaAnalysisChannel.cancelAnalysis(_taskId!);

@@ -4,6 +4,7 @@ import 'package:ai_fake_news_detector/utils/global.colors.dart';
 import 'package:ai_fake_news_detector/widgets/big_button.global.dart';
 import 'package:ai_fake_news_detector/widgets/text.form.global.dart';
 import 'package:ai_fake_news_detector/services/auth_controller.dart';
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:flutter/material.dart';
 
@@ -118,15 +119,15 @@ class _LoginState extends State<Login> {
                       color: Colors.black,
                       isLoading: _isLoading,
                       onTap: _isLoading ? null : () async {
-                        print('Anonymous button tapped');
+                        debugPrint('Anonymous button tapped');
                         setState(() => _isLoading = true);
-                        print('Loading set to true');
+                        debugPrint('Loading set to true');
 
                         // Call anonymous signup API
                         final authController = Get.find<AuthController>();
-                        print('Got auth controller, calling anonymousSignUp');
+                        debugPrint('Got auth controller, calling anonymousSignUp');
                         final success = await authController.anonymousSignUp();
-                        print('anonymousSignUp returned: $success');
+                        debugPrint('anonymousSignUp returned: $success');
 
                         if (success) {
                           Get.offAll(() => Homepage());

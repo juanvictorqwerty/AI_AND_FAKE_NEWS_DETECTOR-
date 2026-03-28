@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'auth_service.dart';
@@ -42,7 +43,7 @@ class AuthController extends GetxController {
         }
       }
     } catch (e) {
-      print('Error loading token: $e');
+      debugPrint('Error loading token: $e');
     } finally {
       isInitialized.value = true;
     }
@@ -53,7 +54,7 @@ class AuthController extends GetxController {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_tokenKey, newToken);
     } catch (e) {
-      print('Error saving token: $e');
+      debugPrint('Error saving token: $e');
     }
   }
 
@@ -62,7 +63,7 @@ class AuthController extends GetxController {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(_isAnonymousKey, value);
     } catch (e) {
-      print('Error saving isAnonymous: $e');
+      debugPrint('Error saving isAnonymous: $e');
     }
   }
 
@@ -73,7 +74,7 @@ class AuthController extends GetxController {
       await prefs.remove(_userKey);
       await prefs.remove(_isAnonymousKey);
     } catch (e) {
-      print('Error clearing token: $e');
+      debugPrint('Error clearing token: $e');
     }
   }
 
@@ -167,7 +168,7 @@ class AuthController extends GetxController {
         await _authService.logout(token: token.value);
       } catch (e) {
         // Ignore errors during logout - still clear local storage
-        print('Server logout error: $e');
+        debugPrint('Server logout error: $e');
       }
     }
     token.value = '';
@@ -268,7 +269,7 @@ class AuthController extends GetxController {
         await _saveUser(result['user']);
       }
     } catch (e) {
-      print('Error fetching profile: $e');
+      debugPrint('Error fetching profile: $e');
     }
   }
 
@@ -311,7 +312,7 @@ class AuthController extends GetxController {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_userKey, jsonEncode(user));
     } catch (e) {
-      print('Error saving user: $e');
+      debugPrint('Error saving user: $e');
     }
   }
 
@@ -356,7 +357,7 @@ class AuthController extends GetxController {
       
       return false;
     } catch (e) {
-      print('Error extending token: $e');
+      debugPrint('Error extending token: $e');
       return false;
     }
   }

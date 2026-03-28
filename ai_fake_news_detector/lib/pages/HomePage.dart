@@ -5,6 +5,7 @@ import 'package:ai_fake_news_detector/pages/SettingsPage.dart';
 import 'package:ai_fake_news_detector/services/auth_controller.dart';
 import 'package:ai_fake_news_detector/utils/global.colors.dart';
 import 'package:ai_fake_news_detector/widgets/big_button.global.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -26,9 +27,9 @@ class _HomepageState extends State<Homepage> {
     final authController = Get.find<AuthController>();
     final extended = await authController.prolongTokenIfNeeded();
     if (extended) {
-      print('Token prolonged for 7 days');
+      debugPrint('Token prolonged for 7 days');
     } else {
-      print('Token already prolonged today or not logged in');
+      debugPrint('Token already prolonged today or not logged in');
     }
   }
 
