@@ -139,6 +139,13 @@ class MediaAnalysisChannel {
     debugPrint('MediaAnalysisChannel: Received video frame method call: ${call.method}');
     
     switch (call.method) {
+      case 'onVideoFrameResult':
+        final data = Map<String, dynamic>.from(call.arguments as Map);
+        debugPrint('MediaAnalysisChannel: Video frame result received: $data');
+        for (final cb in List.of(_videoFrameResultListeners)) {
+          cb(data);
+        }
+        break;
       case 'onVideoFrameProgress':
         final data = Map<String, dynamic>.from(call.arguments as Map);
         debugPrint('MediaAnalysisChannel: Video frame progress received: $data');
