@@ -57,7 +57,7 @@ class AnalysisResult {
   }
 
   /// Check if result indicates AI-generated content
-  bool get isAi => label.toLowerCase() == 'ai';
+  bool get isAi => label.toLowerCase() == 'ai' || label.toLowerCase() == 'artificial';
 
   /// Check if result indicates human-generated content
   bool get isHuman => label.toLowerCase() == 'human';
@@ -79,7 +79,7 @@ class AnalysisResult {
 
   /// Get AI probability as percentage string
   String get aiProbabilityPercentage {
-    final aiProb = probabilities['ai'] ?? 0.0;
+    final aiProb = probabilities['ai'] ?? probabilities['artificial'] ?? 0.0;
     return '${(aiProb * 100).toStringAsFixed(1)}%';
   }
 
@@ -90,7 +90,7 @@ class AnalysisResult {
   }
 
   /// Get AI probability value (0.0 to 1.0)
-  double get aiProbability => probabilities['ai'] ?? 0.0;
+  double get aiProbability => probabilities['ai'] ?? probabilities['artificial'] ?? 0.0;
 
   /// Get Human probability value (0.0 to 1.0)
   double get humanProbability => probabilities['human'] ?? 0.0;
