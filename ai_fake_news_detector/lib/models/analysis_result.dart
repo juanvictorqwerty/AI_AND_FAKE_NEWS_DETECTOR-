@@ -25,7 +25,8 @@ class AnalysisResult {
     // Parse probabilities map
     Map<String, double> parsedProbabilities = {};
     if (json['probabilities'] != null) {
-      final probs = json['probabilities'] as Map<String, dynamic>;
+      // Convert Map<Object?, Object?> from platform channel to Map<String, dynamic>
+      final probs = Map<String, dynamic>.from(json['probabilities'] as Map);
       probs.forEach((key, value) {
         parsedProbabilities[key] = (value as num).toDouble();
       });
