@@ -30,5 +30,8 @@ loguru
 # UUID generation
 uuid
 
+# JWT authentication
+PyJWT
+
 ##timm
 timm

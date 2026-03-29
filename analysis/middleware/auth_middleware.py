@@ -1,35 +1,30 @@
 """
 JWT Authentication Middleware for FastAPI
 
-Validates JWT tokens from Authorization header, checks if user exists in database,
-and extracts user information.
+Validates JWT tokens against database tokens table, checking existence,
+revocation status, and expiration.
 """
 
 import os
-import time
 from typing import Optional, Dict, Any
 from fastapi import HTTPException, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-import jwt
 from loguru import logger
 from dotenv import load_dotenv
+from datetime import datetime
 
 from service.database_service import db_service
 
 load_dotenv()
 
-JWT_SECRET = os.getenv('JWT_SECRET', 'your-secret-key')
-JWT_ALGORITHM = 'HS256'
 security = HTTPBearer()
 
 
 class JWTAuthMiddleware:
-    """JWT Authentication Middleware for FastAPI with database validation"""
+    """JWT Authentication Middleware with database token validation"""
     
-    def __init__(self, secret: str = JWT_SECRET, algorithm: str = JWT_ALGORITHM):
-        self.secret = secret
-        self.algorithm = algorithm
-        logger.info(f"JWT Auth Middleware initialized with algorithm: {algorithm}")
+    def __init__(self):
+        logger.info("JWT Auth Middleware initialized with database validation")
     
     async def __call__(
         self,
@@ -38,41 +33,34 @@ class JWTAuthMiddleware:
         token = credentials.credentials
         
         try:
-            payload = jwt.decode(token, self.secret, algorithms=[self.algorithm])
+            # Check raw token in database
+            token_record = await db_service.get_token_by_value(token)
             
-            if 'exp' in payload:
-                current_time = time.time()
-                if current_time > payload['exp']:
-                    logger.warning(f"Token expired for user: {payload.get('sub', 'unknown')}")
-                    raise HTTPException(status_code=401, detail="Token expired")
+            if not token_record:
+                logger.warning("Token not found in database")
+                raise HTTPException(status_code=401, detail="Invalid token")
             
-            user_id = payload.get('sub')
-            email = payload.get('email')
+            # Check if token is revoked
+            if token_record.get('is_revoked'):
+                logger.warning(f"Token revoked for user: {token_record.get('user_id')}")
+                raise HTTPException(status_code=401, detail="Token has been revoked")
             
-            if not user_id:
-                logger.warning("Token missing user_id (sub) claim")
-                raise HTTPException(status_code=401, detail="Invalid token: missing user_id")
+            # Check database expiration
+            expires_at = token_record.get('expires_at')
+            if expires_at and datetime.now(expires_at.tzinfo) > expires_at:
+                logger.warning(f"Token expired in database for user: {token_record.get('user_id')}")
+                raise HTTPException(status_code=401, detail="Token expired")
             
-            # Validate user exists in database
-            user_exists = await db_service.verify_user_exists(user_id)
-            if not user_exists:
-                logger.warning(f"User not found in database: {user_id}")
-                raise HTTPException(status_code=401, detail="Invalid token: user not found")
+            user_id = str(token_record.get('user_id'))
             
-            logger.info(f"Token validated for user: {user_id}")
+            logger.info(f"Token validated from database for user: {user_id}")
             
             return {
                 'user_id': user_id,
-                'email': email,
-                'payload': payload
+                'token_id': str(token_record.get('id')),
+                'token_record': token_record
             }
             
-        except jwt.ExpiredSignatureError:
-            logger.warning("Token signature expired")
-            raise HTTPException(status_code=401, detail="Token expired")
-        except jwt.InvalidTokenError as e:
-            logger.warning(f"Invalid token: {e}")
-            raise HTTPException(status_code=401, detail="Invalid token")
         except HTTPException:
             raise
         except Exception as e:
@@ -86,15 +74,5 @@ jwt_auth = JWTAuthMiddleware()
 async def validate_jwt_token(
     credentials: HTTPAuthorizationCredentials = Depends(security)
 ) -> Dict[str, Any]:
-    """Dependency function for validating JWT tokens with database check"""
+    """Dependency function for validating JWT tokens against database"""
     return await jwt_auth(credentials)
-
-
-def decode_token_without_verification(token: str) -> Optional[Dict[str, Any]]:
-    """Decode JWT token without verification (for debugging only)"""
-    try:
-        payload = jwt.decode(token, options={"verify_signature": False})
-        return payload
-    except Exception as e:
-        logger.error(f"Error decoding token: {e}")
-        return None
