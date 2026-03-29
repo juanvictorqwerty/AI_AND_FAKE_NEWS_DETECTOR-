@@ -29,7 +29,7 @@ object ConfigManager {
     private const val KEY_AUTH_TOKEN = "$FLUTTER_PREFIX$RAW_KEY_AUTH_TOKEN"
 
     // Default base URL (same as Flutter default)
-    private const val DEFAULT_BASE_URL = "http://192.168.1.152:4000"
+    private const val DEFAULT_BASE_URL = "http://192.168.1.152:8000"
 
     private var prefs: SharedPreferences? = null
 

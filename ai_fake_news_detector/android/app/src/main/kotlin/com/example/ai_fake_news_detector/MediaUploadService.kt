@@ -6,6 +6,7 @@ import kotlinx.coroutines.withContext
 import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.asRequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import java.io.File
 import java.util.concurrent.TimeUnit
@@ -187,27 +188,7 @@ class MediaUploadService {
         .writeTimeout(UPLOAD_TIMEOUT_MINUTES, TimeUnit.MINUTES)
         .build()
 
-    var baseUrl: String = "http://192.168.1.152:8000"
-
-    /**
-     * Get JWT authentication token from ConfigManager.
-     * Returns null if user is not logged in.
-     */
-    private fun getAuthToken(): String? {
-        return try {
-            val token = ConfigManager.getAuthToken()
-            if (token.isNullOrEmpty()) {
-                Log.w(TAG, "No auth token available")
-                null
-            } else {
-                Log.d(TAG, "Auth token retrieved successfully")
-                token
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error retrieving auth token: ${e.message}")
-            null
-        }
-    }
+    var baseUrl: String = ConfigManager.getBaseUrl()
 
     /** Derive MIME type from file extension. */
     private fun getMimeType(filePath: String): String {
@@ -250,10 +231,22 @@ class MediaUploadService {
                     )
                     .build()
 
-                val request = Request.Builder()
+                // Get auth token from secure storage
+                val token = ConfigManager.getAuthToken()
+                
+                val requestBuilder = Request.Builder()
                     .url("$baseUrl/upload")
                     .post(requestBody)
-                    .build()
+                
+                // Add Authorization header if token exists
+                if (!token.isNullOrEmpty()) {
+                    Log.d(TAG, "Adding Authorization header to upload request")
+                    requestBuilder.addHeader("Authorization", "Bearer $token")
+                } else {
+                    Log.w(TAG, "No auth token available - upload may fail with 401")
+                }
+                
+                val request = requestBuilder.build()
 
                 Log.d(TAG, "POST $baseUrl/upload")
                 val response = withContext(Dispatchers.IO) { client.newCall(request).execute() }
@@ -329,10 +322,22 @@ class MediaUploadService {
                     Log.d(TAG, "Added frame $index: ${file.name} (${file.length()} bytes)")
                 }
 
-                val request = Request.Builder()
+                // Get auth token from secure storage
+                val token = ConfigManager.getAuthToken()
+                
+                val requestBuilder = Request.Builder()
                     .url("$baseUrl/upload/video")
                     .post(bodyBuilder.build())
-                    .build()
+                
+                // Add Authorization header if token exists
+                if (!token.isNullOrEmpty()) {
+                    Log.d(TAG, "Adding Authorization header to video upload request")
+                    requestBuilder.addHeader("Authorization", "Bearer $token")
+                } else {
+                    Log.w(TAG, "No auth token available - video upload may fail with 401")
+                }
+                
+                val request = requestBuilder.build()
 
                 Log.d(TAG, "POST $baseUrl/upload/video with ${framePaths.size} frames")
                 val response = withContext(Dispatchers.IO) { client.newCall(request).execute() }
@@ -470,21 +475,14 @@ class MediaUploadService {
      *
      * @param filePath Path to the media file
      * @param mediaType "image" or "video"
+     * @param token Authentication token
      * @return JSONObject with analysis results
-     * @throws Exception if authentication fails or upload fails
+     * @throws Exception if upload fails
      */
-    suspend fun uploadMediaWithAuth(filePath: String, mediaType: String): JSONObject {
-        var attempts = 0
-
-        while (attempts < MAX_RETRY_ATTEMPTS) {
+    suspend fun uploadMediaWithAuth(filePath: String, mediaType: String, token: String): JSONObject {
+        return withContext(Dispatchers.IO) {
             try {
-                Log.d(TAG, "Uploading media with auth (attempt ${attempts + 1}/$MAX_RETRY_ATTEMPTS): $filePath")
-
-                // Get authentication token
-                val token = getAuthToken()
-                if (token == null) {
-                    throw Exception("Authentication required. Please login.")
-                }
+                Log.d(TAG, "Uploading media with auth: $filePath")
 
                 val file = File(filePath)
                 if (!file.exists()) throw Exception("File not found: $filePath")
@@ -506,14 +504,14 @@ class MediaUploadService {
                     .build()
 
                 Log.d(TAG, "POST $baseUrl/analyze/media with auth")
-                val response = withContext(Dispatchers.IO) { client.newCall(request).execute() }
+                val response = client.newCall(request).execute()
                 val responseBody = response.body?.string() ?: ""
                 Log.d(TAG, "Response ${response.code}: $responseBody")
 
                 if (response.isSuccessful) {
                     val jsonResponse = JSONObject(responseBody)
                     Log.d(TAG, "Authenticated upload successful")
-                    return jsonResponse
+                    return@withContext jsonResponse
                 }
 
                 // Handle authentication errors
@@ -529,24 +527,10 @@ class MediaUploadService {
                 }
                 throw Exception(errorMessage)
 
-            } catch (e: java.net.SocketException) {
-                attempts++
-                Log.e(TAG, "Network error (attempt $attempts): ${e.message}")
-                if (attempts >= MAX_RETRY_ATTEMPTS)
-                    throw Exception("Network error after $MAX_RETRY_ATTEMPTS attempts: ${e.message}")
-                kotlinx.coroutines.delay((attempts * 2000).toLong())
-            } catch (e: java.net.SocketTimeoutException) {
-                attempts++
-                Log.e(TAG, "Upload timeout (attempt $attempts)")
-                if (attempts >= MAX_RETRY_ATTEMPTS)
-                    throw Exception("Upload timeout after $MAX_RETRY_ATTEMPTS attempts")
-                kotlinx.coroutines.delay((attempts * 2000).toLong())
             } catch (e: Exception) {
                 Log.e(TAG, "Upload error: ${e.message}")
                 throw Exception("Upload failed: ${e.message}")
             }
         }
-
-        throw Exception("Upload failed after $MAX_RETRY_ATTEMPTS attempts")
     }
 }
