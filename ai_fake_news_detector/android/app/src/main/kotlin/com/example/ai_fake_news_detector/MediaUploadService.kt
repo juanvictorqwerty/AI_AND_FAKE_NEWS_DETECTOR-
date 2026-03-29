@@ -170,6 +170,7 @@ data class VideoUploadResponse(
  * - Polling the results endpoint until completion
  * - Retry mechanism and timeout handling
  * - Multi-frame upload to /upload/video
+ * - JWT authenticated upload to /analyze/media
  */
 class MediaUploadService {
     companion object {
@@ -187,6 +188,26 @@ class MediaUploadService {
         .build()
 
     var baseUrl: String = "http://192.168.1.152:8000"
+
+    /**
+     * Get JWT authentication token from ConfigManager.
+     * Returns null if user is not logged in.
+     */
+    private fun getAuthToken(): String? {
+        return try {
+            val token = ConfigManager.getAuthToken()
+            if (token.isNullOrEmpty()) {
+                Log.w(TAG, "No auth token available")
+                null
+            } else {
+                Log.d(TAG, "Auth token retrieved successfully")
+                token
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error retrieving auth token: ${e.message}")
+            null
+        }
+    }
 
     /** Derive MIME type from file extension. */
     private fun getMimeType(filePath: String): String {
@@ -442,5 +463,90 @@ class MediaUploadService {
         val uploadResponse = uploadFile(filePath, fileType)
         if (!uploadResponse.success) throw Exception(uploadResponse.message)
         return pollUntilComplete(uploadResponse.fileId, onStatusUpdate = onStatusUpdate)
+    }
+
+    /**
+     * Upload media file with JWT authentication to /analyze/media endpoint.
+     *
+     * @param filePath Path to the media file
+     * @param mediaType "image" or "video"
+     * @return JSONObject with analysis results
+     * @throws Exception if authentication fails or upload fails
+     */
+    suspend fun uploadMediaWithAuth(filePath: String, mediaType: String): JSONObject {
+        var attempts = 0
+
+        while (attempts < MAX_RETRY_ATTEMPTS) {
+            try {
+                Log.d(TAG, "Uploading media with auth (attempt ${attempts + 1}/$MAX_RETRY_ATTEMPTS): $filePath")
+
+                // Get authentication token
+                val token = getAuthToken()
+                if (token == null) {
+                    throw Exception("Authentication required. Please login.")
+                }
+
+                val file = File(filePath)
+                if (!file.exists()) throw Exception("File not found: $filePath")
+                Log.d(TAG, "File size: ${file.length()} bytes")
+
+                val requestBody = MultipartBody.Builder()
+                    .setType(MultipartBody.FORM)
+                    .addFormDataPart(
+                        "file", file.name,
+                        file.asRequestBody(getMimeType(filePath).toMediaType())
+                    )
+                    .addFormDataPart("type", mediaType)
+                    .build()
+
+                val request = Request.Builder()
+                    .url("$baseUrl/analyze/media")
+                    .addHeader("Authorization", "Bearer $token")
+                    .post(requestBody)
+                    .build()
+
+                Log.d(TAG, "POST $baseUrl/analyze/media with auth")
+                val response = withContext(Dispatchers.IO) { client.newCall(request).execute() }
+                val responseBody = response.body?.string() ?: ""
+                Log.d(TAG, "Response ${response.code}: $responseBody")
+
+                if (response.isSuccessful) {
+                    val jsonResponse = JSONObject(responseBody)
+                    Log.d(TAG, "Authenticated upload successful")
+                    return jsonResponse
+                }
+
+                // Handle authentication errors
+                if (response.code == 401) {
+                    throw Exception("Authentication failed. Please login again.")
+                }
+
+                // Parse error message
+                val errorMessage = try {
+                    JSONObject(responseBody).optString("detail", "Upload failed with status ${response.code}")
+                } catch (_: Exception) {
+                    "Upload failed with status ${response.code}"
+                }
+                throw Exception(errorMessage)
+
+            } catch (e: java.net.SocketException) {
+                attempts++
+                Log.e(TAG, "Network error (attempt $attempts): ${e.message}")
+                if (attempts >= MAX_RETRY_ATTEMPTS)
+                    throw Exception("Network error after $MAX_RETRY_ATTEMPTS attempts: ${e.message}")
+                kotlinx.coroutines.delay((attempts * 2000).toLong())
+            } catch (e: java.net.SocketTimeoutException) {
+                attempts++
+                Log.e(TAG, "Upload timeout (attempt $attempts)")
+                if (attempts >= MAX_RETRY_ATTEMPTS)
+                    throw Exception("Upload timeout after $MAX_RETRY_ATTEMPTS attempts")
+                kotlinx.coroutines.delay((attempts * 2000).toLong())
+            } catch (e: Exception) {
+                Log.e(TAG, "Upload error: ${e.message}")
+                throw Exception("Upload failed: ${e.message}")
+            }
+        }
+
+        throw Exception("Upload failed after $MAX_RETRY_ATTEMPTS attempts")
     }
 }
