@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:ai_fake_news_detector/services/fact_check_service.dart';
@@ -25,9 +26,9 @@ class NotificationService extends GetxService {
     try {
       final result = await _channel.invokeMethod('isNotificationServiceRunning');
       isServiceRunning.value = result == true;
-      print('NotificationService: Service state checked on init: ${isServiceRunning.value}');
+      debugPrint('NotificationService: Service state checked on init: ${isServiceRunning.value}');
     } catch (e) {
-      print('NotificationService: Error checking service state: $e');
+      debugPrint('NotificationService: Error checking service state: $e');
       // If we can't check, assume it's not running
       isServiceRunning.value = false;
     }
@@ -35,18 +36,18 @@ class NotificationService extends GetxService {
   
   // Static method to set up channel before service initialization
   static void setupChannel() {
-    print('NotificationService: Setting up MethodChannel handler');
+    debugPrint('NotificationService: Setting up MethodChannel handler');
     _channel.setMethodCallHandler((MethodCall call) async {
-      print('NotificationService: MethodChannel received: ${call.method}');
+      debugPrint('NotificationService: MethodChannel received: ${call.method}');
       switch (call.method) {
         case 'onNotificationInput':
           final String text = call.arguments as String;
-          print('NotificationService: onNotificationInput called with text: $text');
+          debugPrint('NotificationService: onNotificationInput called with text: $text');
           final instance = Get.find<NotificationService>();
           await instance._handleNotificationInput(text);
           break;
         default:
-          print('NotificationService: Unknown method ${call.method}');
+          debugPrint('NotificationService: Unknown method ${call.method}');
       }
     });
   }
@@ -59,32 +60,32 @@ class NotificationService extends GetxService {
           await _handleNotificationInput(text);
           break;
         default:
-          print('NotificationService: Unknown method ${call.method}');
+          debugPrint('NotificationService: Unknown method ${call.method}');
       }
     });
   }
   
   Future<void> _handleNotificationInput(String text) async {
-    print('NotificationService: ========== RECEIVED INPUT ==========');
-    print('NotificationService: Text: $text');
-    print('NotificationService: Auth token available: ${_authController.token.value.isNotEmpty}');
+    debugPrint('NotificationService: ========== RECEIVED INPUT ==========');
+    debugPrint('NotificationService: Text: $text');
+    debugPrint('NotificationService: Auth token available: ${_authController.token.value.isNotEmpty}');
     
     try {
       // Get the auth token
       final token = _authController.token.value;
       if (token.isEmpty) {
-        print('NotificationService: ERROR - No auth token available');
+        debugPrint('NotificationService: ERROR - No auth token available');
         await _updateNotificationResult('Error: Not authenticated. Please login first.');
         return;
       }
       
-      print('NotificationService: Calling fact check service...');
+      debugPrint('NotificationService: Calling fact check service...');
       // Call the fact check service
       final result = await _factCheckService.searchFactCheck(
         claim: text,
         token: token,
       );
-      print('NotificationService: Fact check result: $result');
+      debugPrint('NotificationService: Fact check result: $result');
       
       if (result['success'] == true) {
         final factCheckResult = result['result'];
@@ -96,29 +97,29 @@ class NotificationService extends GetxService {
         final resultText = 'Verdict: $verdict\n$reason\n\n$evidenceSummary';
         lastResult.value = resultText;
         
-        print('NotificationService: SUCCESS - Updating notification with result');
-        print('NotificationService: Result text: $resultText');
+        debugPrint('NotificationService: SUCCESS - Updating notification with result');
+        debugPrint('NotificationService: Result text: $resultText');
         
         // Update the notification with the result
         await _updateNotificationResult(resultText);
       } else {
         final errorMessage = result['message'] ?? 'Fact check failed';
-        print('NotificationService: FAILED - Updating notification with error: $errorMessage');
+        debugPrint('NotificationService: FAILED - Updating notification with error: $errorMessage');
         await _updateNotificationResult('Error: $errorMessage');
       }
     } catch (e) {
-      print('NotificationService: Error processing input: $e');
+      debugPrint('NotificationService: Error processing input: $e');
       await _updateNotificationResult('Error: ${e.toString()}');
     }
   }
   
   Future<void> _updateNotificationResult(String result) async {
     try {
-      print('NotificationService: Calling updateNotificationResult with: $result');
+      debugPrint('NotificationService: Calling updateNotificationResult with: $result');
       await _channel.invokeMethod('updateNotificationResult', {'result': result});
-      print('NotificationService: updateNotificationResult called successfully');
+      debugPrint('NotificationService: updateNotificationResult called successfully');
     } catch (e) {
-      print('NotificationService: Error updating notification: $e');
+      debugPrint('NotificationService: Error updating notification: $e');
     }
   }
   
@@ -126,10 +127,10 @@ class NotificationService extends GetxService {
     try {
       final result = await _channel.invokeMethod('startNotificationService');
       isServiceRunning.value = result == true;
-      print('NotificationService: Service started: $result');
+      debugPrint('NotificationService: Service started: $result');
       return result == true;
     } catch (e) {
-      print('NotificationService: Error starting service: $e');
+      debugPrint('NotificationService: Error starting service: $e');
       return false;
     }
   }
@@ -138,10 +139,10 @@ class NotificationService extends GetxService {
     try {
       final result = await _channel.invokeMethod('stopNotificationService');
       isServiceRunning.value = false;
-      print('NotificationService: Service stopped: $result');
+      debugPrint('NotificationService: Service stopped: $result');
       return result == true;
     } catch (e) {
-      print('NotificationService: Error stopping service: $e');
+      debugPrint('NotificationService: Error stopping service: $e');
       return false;
     }
   }

@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:ai_fake_news_detector/services/media_analysis_channel.dart';
 import 'package:ai_fake_news_detector/utils/global.colors.dart';
@@ -33,17 +34,23 @@ class _ProcessingScreenState extends State<ProcessingScreen> {
 
   String _status = 'uploading';
   double _progress = 0.0;
+  int _frameCount = 0;
 
   // Named callbacks so we can unsubscribe cleanly (Fix 1).
   late final void Function(Map<String, dynamic>) _onResult;
   late final void Function(Map<String, dynamic>) _onError;
+  late final void Function(Map<String, dynamic>) _onVideoFrameResult;
+  late final void Function(Map<String, dynamic>) _onVideoFrameError;
+  late final void Function(Map<String, dynamic>) _onVideoFrameProgress;
   StreamSubscription<AnalysisProgressEvent>? _progressSub;
 
   @override
   void initState() {
     super.initState();
+    debugPrint('ProcessingScreen: initState called');
 
     _onResult = (resultData) {
+      debugPrint('ProcessingScreen: Analysis result received: $resultData');
       if (!_hasNavigated && mounted && !_isDisposed) {
         _hasNavigated = true;
         // Pass file metadata alongside result so MediaResultPage can display
@@ -62,20 +69,63 @@ class _ProcessingScreenState extends State<ProcessingScreen> {
     };
 
     _onError = (errorData) {
+      debugPrint('ProcessingScreen: Analysis error received: $errorData');
       if (mounted && !_isDisposed) {
         setState(() => _status = 'failed');
+      }
+    };
+
+    _onVideoFrameResult = (resultData) {
+      debugPrint('ProcessingScreen: Video frame result received: $resultData');
+      if (!_hasNavigated && mounted && !_isDisposed) {
+        _hasNavigated = true;
+        // Pass file metadata alongside result so MediaResultPage can display
+        // the preview without re-fetching anything (Fix 2).
+        final args = {
+          'filePath': _filePath,
+          'fileType': _fileType,
+          ...resultData,
+        };
+        Navigator.pushReplacementNamed(
+          context,
+          '/media-result',
+          arguments: args,
+        );
+      }
+    };
+
+    _onVideoFrameError = (errorData) {
+      debugPrint('ProcessingScreen: Video frame error received: $errorData');
+      if (mounted && !_isDisposed) {
+        setState(() => _status = 'failed');
+      }
+    };
+
+    _onVideoFrameProgress = (progressData) {
+      debugPrint('ProcessingScreen: Video frame progress received: $progressData');
+      if (mounted && !_isDisposed) {
+        setState(() {
+          _status = progressData['status'] as String? ?? _status;
+          _progress = (progressData['progress'] as num?)?.toDouble() ?? _progress;
+          _frameCount = progressData['frameCount'] as int? ?? _frameCount;
+        });
       }
     };
 
     // Fix 1 – add, don't replace.
     MediaAnalysisChannel.addOnAnalysisResult(_onResult);
     MediaAnalysisChannel.addOnAnalysisError(_onError);
+    MediaAnalysisChannel.addOnVideoFrameResult(_onVideoFrameResult);
+    MediaAnalysisChannel.addOnVideoFrameError(_onVideoFrameError);
+    MediaAnalysisChannel.addOnVideoFrameProgress(_onVideoFrameProgress);
+    debugPrint('ProcessingScreen: Listeners registered');
 
     // Fix 2 – drive the progress UI from the stream.
     _progressSub =
         MediaAnalysisChannel.progressStream.listen((event) {
       if (!mounted || _isDisposed) return;
       if (event.taskId != _taskId) return;
+      debugPrint('ProcessingScreen: Progress event received: status=${event.status}, progress=${event.progress}');
       setState(() {
         _status = event.status;
         _progress = event.progress;
@@ -89,22 +139,30 @@ class _ProcessingScreenState extends State<ProcessingScreen> {
   void _readArgs() {
     final args = ModalRoute.of(context)?.settings.arguments
         as Map<String, dynamic>?;
+    debugPrint('ProcessingScreen: Route arguments: $args');
+    
     if (args != null) {
       setState(() {
         _taskId = args['taskId'] as String?;
         _filePath = args['filePath'] as String?;
         _fileType = args['fileType'] as String?;
       });
+      debugPrint('ProcessingScreen: TaskId=$_taskId, FilePath=$_filePath, FileType=$_fileType');
     }
   }
 
   @override
   void dispose() {
+    debugPrint('ProcessingScreen: dispose called');
     _isDisposed = true;
     // Fix 1 – remove our specific callbacks, not everyone's.
     MediaAnalysisChannel.removeOnAnalysisResult(_onResult);
     MediaAnalysisChannel.removeOnAnalysisError(_onError);
+    MediaAnalysisChannel.removeOnVideoFrameResult(_onVideoFrameResult);
+    MediaAnalysisChannel.removeOnVideoFrameError(_onVideoFrameError);
+    MediaAnalysisChannel.removeOnVideoFrameProgress(_onVideoFrameProgress);
     _progressSub?.cancel();
+    debugPrint('ProcessingScreen: Listeners removed');
     super.dispose();
   }
 
@@ -193,6 +251,72 @@ class _ProcessingScreenState extends State<ProcessingScreen> {
         ],
       );
     }
+    if (_status == 'extracting_frames') {
+      return Column(
+        children: [
+          SizedBox(
+            width: 80,
+            height: 80,
+            child: CircularProgressIndicator(
+              strokeWidth: 6,
+              valueColor:
+                  AlwaysStoppedAnimation<Color>(GlobalColors.mainColor),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Extracting frames…',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: GlobalColors.mainColor,
+            ),
+          ),
+          if (_frameCount > 0) ...[
+            const SizedBox(height: 8),
+            Text(
+              '$_frameCount frames extracted',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey[600],
+              ),
+            ),
+          ],
+        ],
+      );
+    }
+    if (_status == 'uploading_frames') {
+      return Column(
+        children: [
+          LinearProgressIndicator(
+            value: _progress,
+            backgroundColor: Colors.grey[300],
+            valueColor:
+                AlwaysStoppedAnimation<Color>(GlobalColors.mainColor),
+            minHeight: 8,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Uploading frames… ${(_progress * 100).toStringAsFixed(0)}%',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: GlobalColors.mainColor,
+            ),
+          ),
+          if (_frameCount > 0) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Uploading $_frameCount frames',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey[600],
+              ),
+            ),
+          ],
+        ],
+      );
+    }
     if (_status == 'processing') {
       return Column(
         children: [
@@ -226,12 +350,14 @@ class _ProcessingScreenState extends State<ProcessingScreen> {
   Widget _buildStatusMessage() {
     final messages = {
       'uploading': 'Uploading file…',
+      'extracting_frames': 'Extracting video frames…',
+      'uploading_frames': 'Uploading frames to server…',
       'processing': 'Analysing media, please wait…',
       'failed': 'Something went wrong. You can retry or go back.',
       'cancelled': 'Upload cancelled.',
     };
     final message = messages[_status] ?? 'Starting…';
-    final isActive = _status == 'uploading' || _status == 'processing';
+    final isActive = _status == 'uploading' || _status == 'extracting_frames' || _status == 'uploading_frames' || _status == 'processing';
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -270,7 +396,7 @@ class _ProcessingScreenState extends State<ProcessingScreen> {
   }
 
   Widget _buildCancelButton() {
-    final isActive = _status == 'uploading' || _status == 'processing';
+    final isActive = _status == 'uploading' || _status == 'extracting_frames' || _status == 'uploading_frames' || _status == 'processing';
     return ElevatedButton(
       onPressed: isActive ? _showCancelDialog : null,
       style: ElevatedButton.styleFrom(
@@ -286,6 +412,7 @@ class _ProcessingScreenState extends State<ProcessingScreen> {
   }
 
   void _showCancelDialog() {
+    debugPrint('ProcessingScreen: Showing cancel dialog');
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -307,6 +434,7 @@ class _ProcessingScreenState extends State<ProcessingScreen> {
           ElevatedButton(
             onPressed: () {
               Navigator.pop(ctx);
+              debugPrint('ProcessingScreen: Cancel button pressed for taskId: $_taskId');
               // Fix 6 – taskId is now always set, so this call is safe.
               if (_taskId != null) {
                 MediaAnalysisChannel.cancelAnalysis(_taskId!);

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 /// Singleton channel between Flutter and the Kotlin MediaAnalysisService.
@@ -16,11 +17,18 @@ import 'package:flutter/services.dart';
 /// FIX 3 – taskId threading.
 ///   startAnalysis() returns the taskId it generated so callers can pass it
 ///   through route arguments and use it for cancellation.
+///
+/// FIX 4 – Video frame progress and cancellation handlers.
+///   Added missing handlers for onVideoFrameProgress and onVideoFrameCancellation
+///   events sent from Android's VideoFrameProcessingService.
 class MediaAnalysisChannel {
   MediaAnalysisChannel._();
 
   static const MethodChannel _channel =
       MethodChannel('com.example.ai_fake_news_detector/media_analysis');
+  
+  static const MethodChannel _videoFrameChannel =
+      MethodChannel('com.example.ai_fake_news_detector/video_frame_processing');
 
   // --------------------------------------------------------------------------
   // Internal listener lists (Fix 1)
@@ -28,6 +36,11 @@ class MediaAnalysisChannel {
   static final List<void Function(Map<String, dynamic>)> _resultListeners = [];
   static final List<void Function(Map<String, dynamic>)> _errorListeners = [];
   static final List<void Function(Map<String, dynamic>)> _cancellationListeners = [];
+  static final List<void Function(Map<String, dynamic>)> _videoFrameResultListeners = [];
+  static final List<void Function(Map<String, dynamic>)> _videoFrameErrorListeners = [];
+  // FIX 4: Added missing listener lists for video frame progress and cancellation
+  static final List<void Function(Map<String, dynamic>)> _videoFrameProgressListeners = [];
+  static final List<void Function(Map<String, dynamic>)> _videoFrameCancellationListeners = [];
 
   // --------------------------------------------------------------------------
   // Progress stream (Fix 2)
@@ -44,12 +57,16 @@ class MediaAnalysisChannel {
   // --------------------------------------------------------------------------
   static void initialize() {
     _channel.setMethodCallHandler(_handleMethodCall);
+    _videoFrameChannel.setMethodCallHandler(_handleVideoFrameMethodCall);
   }
 
   static Future<void> _handleMethodCall(MethodCall call) async {
+    debugPrint('MediaAnalysisChannel: Received method call: ${call.method}');
+    
     switch (call.method) {
       case 'onAnalysisResult':
         final data = Map<String, dynamic>.from(call.arguments as Map);
+        debugPrint('MediaAnalysisChannel: Analysis result received: $data');
         for (final cb in List.of(_resultListeners)) {
           cb(data);
         }
@@ -57,6 +74,7 @@ class MediaAnalysisChannel {
 
       case 'onAnalysisError':
         final data = Map<String, dynamic>.from(call.arguments as Map);
+        debugPrint('MediaAnalysisChannel: Analysis error received: $data');
         for (final cb in List.of(_errorListeners)) {
           cb(data);
         }
@@ -64,6 +82,7 @@ class MediaAnalysisChannel {
 
       case 'onAnalysisCancelled':
         final data = Map<String, dynamic>.from(call.arguments as Map);
+        debugPrint('MediaAnalysisChannel: Analysis cancelled received: $data');
         for (final cb in List.of(_cancellationListeners)) {
           cb(data);
         }
@@ -72,12 +91,84 @@ class MediaAnalysisChannel {
       // Fix 2: Kotlin service sends progress events here
       case 'onAnalysisProgress':
         final data = Map<String, dynamic>.from(call.arguments as Map);
+        debugPrint('MediaAnalysisChannel: Analysis progress received: $data');
         _progressController.add(AnalysisProgressEvent(
           taskId: data['taskId'] as String,
           status: data['status'] as String,
           progress: (data['progress'] as num?)?.toDouble() ?? 0.0,
         ));
         break;
+
+      // Video frame processing events
+      case 'onVideoFrameResult':
+        final data = Map<String, dynamic>.from(call.arguments as Map);
+        debugPrint('MediaAnalysisChannel: Video frame result received: $data');
+        for (final cb in List.of(_videoFrameResultListeners)) {
+          cb(data);
+        }
+        break;
+
+      case 'onVideoFrameError':
+        final data = Map<String, dynamic>.from(call.arguments as Map);
+        debugPrint('MediaAnalysisChannel: Video frame error received: $data');
+        for (final cb in List.of(_videoFrameErrorListeners)) {
+          cb(data);
+        }
+        break;
+
+      // FIX 4: Added missing handlers for video frame progress and cancellation
+      case 'onVideoFrameProgress':
+        final data = Map<String, dynamic>.from(call.arguments as Map);
+        debugPrint('MediaAnalysisChannel: Video frame progress received: $data');
+        for (final cb in List.of(_videoFrameProgressListeners)) {
+          cb(data);
+        }
+        break;
+
+      case 'onVideoFrameCancellation':
+        final data = Map<String, dynamic>.from(call.arguments as Map);
+        debugPrint('MediaAnalysisChannel: Video frame cancellation received: $data');
+        for (final cb in List.of(_videoFrameCancellationListeners)) {
+          cb(data);
+        }
+        break;
+    }
+  }
+
+  static Future<void> _handleVideoFrameMethodCall(MethodCall call) async {
+    debugPrint('MediaAnalysisChannel: Received video frame method call: ${call.method}');
+    
+    switch (call.method) {
+      case 'onVideoFrameResult':
+        final data = Map<String, dynamic>.from(call.arguments as Map);
+        debugPrint('MediaAnalysisChannel: Video frame result received: $data');
+        for (final cb in List.of(_videoFrameResultListeners)) {
+          cb(data);
+        }
+        break;
+      case 'onVideoFrameError':
+        final data = Map<String, dynamic>.from(call.arguments as Map);
+        debugPrint('MediaAnalysisChannel: Video frame error received: $data');
+        for (final cb in List.of(_videoFrameErrorListeners)) {
+          cb(data);
+        }
+        break;
+      case 'onVideoFrameProgress':
+        final data = Map<String, dynamic>.from(call.arguments as Map);
+        debugPrint('MediaAnalysisChannel: Video frame progress received: $data');
+        for (final cb in List.of(_videoFrameProgressListeners)) {
+          cb(data);
+        }
+        break;
+      case 'onVideoFrameCancellation':
+        final data = Map<String, dynamic>.from(call.arguments as Map);
+        debugPrint('MediaAnalysisChannel: Video frame cancellation received: $data');
+        for (final cb in List.of(_videoFrameCancellationListeners)) {
+          cb(data);
+        }
+        break;
+      default:
+        debugPrint('MediaAnalysisChannel: Unknown video frame method: ${call.method}');
     }
   }
 
@@ -103,6 +194,31 @@ class MediaAnalysisChannel {
   static void removeOnAnalysisCancelled(
           void Function(Map<String, dynamic>) cb) =>
       _cancellationListeners.remove(cb);
+
+  static void addOnVideoFrameResult(void Function(Map<String, dynamic>) cb) =>
+      _videoFrameResultListeners.add(cb);
+
+  static void removeOnVideoFrameResult(void Function(Map<String, dynamic>) cb) =>
+      _videoFrameResultListeners.remove(cb);
+
+  static void addOnVideoFrameError(void Function(Map<String, dynamic>) cb) =>
+      _videoFrameErrorListeners.add(cb);
+
+  static void removeOnVideoFrameError(void Function(Map<String, dynamic>) cb) =>
+      _videoFrameErrorListeners.remove(cb);
+
+  // FIX 4: Added subscription management for video frame progress and cancellation
+  static void addOnVideoFrameProgress(void Function(Map<String, dynamic>) cb) =>
+      _videoFrameProgressListeners.add(cb);
+
+  static void removeOnVideoFrameProgress(void Function(Map<String, dynamic>) cb) =>
+      _videoFrameProgressListeners.remove(cb);
+
+  static void addOnVideoFrameCancellation(void Function(Map<String, dynamic>) cb) =>
+      _videoFrameCancellationListeners.add(cb);
+
+  static void removeOnVideoFrameCancellation(void Function(Map<String, dynamic>) cb) =>
+      _videoFrameCancellationListeners.remove(cb);
 
   // --------------------------------------------------------------------------
   // Outbound calls to Kotlin

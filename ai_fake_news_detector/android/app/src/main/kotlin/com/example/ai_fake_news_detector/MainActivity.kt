@@ -4,6 +4,8 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.os.PowerManager
 import android.provider.Settings
 import io.flutter.embedding.android.FlutterActivity
@@ -24,17 +26,21 @@ class MainActivity : FlutterActivity() {
         private const val MEDIA_ANALYSIS_CHANNEL = "com.example.ai_fake_news_detector/media_analysis"
         private const val VIDEO_FRAME_PROCESSING_CHANNEL = "com.example.ai_fake_news_detector/video_frame_processing"
         
+        // Handler for dispatching MethodChannel calls to the main thread
+        private val mainHandler = Handler(Looper.getMainLooper())
+        
         /**
          * Send analysis result to Flutter
          * @return true if successful, false if channel is null
          */
         fun sendAnalysisResult(resultData: Map<String, Any>): Boolean {
-            return if (mediaAnalysisChannel != null) {
-                mediaAnalysisChannel?.invokeMethod("onAnalysisResult", resultData)
-                true
-            } else {
-                false
+            val success = mediaAnalysisChannel != null
+            if (success) {
+                mainHandler.post {
+                    mediaAnalysisChannel?.invokeMethod("onAnalysisResult", resultData)
+                }
             }
+            return success
         }
         
         /**
@@ -42,12 +48,13 @@ class MainActivity : FlutterActivity() {
          * @return true if successful, false if channel is null
          */
         fun sendAnalysisError(errorData: Map<String, Any>): Boolean {
-            return if (mediaAnalysisChannel != null) {
-                mediaAnalysisChannel?.invokeMethod("onAnalysisError", errorData)
-                true
-            } else {
-                false
+            val success = mediaAnalysisChannel != null
+            if (success) {
+                mainHandler.post {
+                    mediaAnalysisChannel?.invokeMethod("onAnalysisError", errorData)
+                }
             }
+            return success
         }
         
         /**
@@ -55,12 +62,13 @@ class MainActivity : FlutterActivity() {
          * @return true if successful, false if channel is null
          */
         fun sendAnalysisCancellation(cancellationData: Map<String, Any>): Boolean {
-            return if (mediaAnalysisChannel != null) {
-                mediaAnalysisChannel?.invokeMethod("onAnalysisCancellation", cancellationData)
-                true
-            } else {
-                false
+            val success = mediaAnalysisChannel != null
+            if (success) {
+                mainHandler.post {
+                    mediaAnalysisChannel?.invokeMethod("onAnalysisCancellation", cancellationData)
+                }
             }
+            return success
         }
         
         /**
@@ -70,7 +78,9 @@ class MainActivity : FlutterActivity() {
         fun sendAnalysisProgress(progressData: Map<String, Any>): Boolean {
             val success = mediaAnalysisChannel != null
             if (success) {
-                mediaAnalysisChannel?.invokeMethod("onAnalysisProgress", progressData)
+                mainHandler.post {
+                    mediaAnalysisChannel?.invokeMethod("onAnalysisProgress", progressData)
+                }
             }
             return success
         }
@@ -80,12 +90,13 @@ class MainActivity : FlutterActivity() {
          * @return true if successful, false if channel is null
          */
         fun sendVideoFrameResult(resultData: Map<String, Any>): Boolean {
-            return if (videoFrameProcessingChannel != null) {
-                videoFrameProcessingChannel?.invokeMethod("onVideoFrameResult", resultData)
-                true
-            } else {
-                false
+            val success = videoFrameProcessingChannel != null
+            if (success) {
+                mainHandler.post {
+                    videoFrameProcessingChannel?.invokeMethod("onVideoFrameResult", resultData)
+                }
             }
+            return success
         }
         
         /**
@@ -93,12 +104,13 @@ class MainActivity : FlutterActivity() {
          * @return true if successful, false if channel is null
          */
         fun sendVideoFrameError(errorData: Map<String, Any>): Boolean {
-            return if (videoFrameProcessingChannel != null) {
-                videoFrameProcessingChannel?.invokeMethod("onVideoFrameError", errorData)
-                true
-            } else {
-                false
+            val success = videoFrameProcessingChannel != null
+            if (success) {
+                mainHandler.post {
+                    videoFrameProcessingChannel?.invokeMethod("onVideoFrameError", errorData)
+                }
             }
+            return success
         }
         
         /**
@@ -108,7 +120,9 @@ class MainActivity : FlutterActivity() {
         fun sendVideoFrameProgress(progressData: Map<String, Any>): Boolean {
             val success = videoFrameProcessingChannel != null
             if (success) {
-                videoFrameProcessingChannel?.invokeMethod("onVideoFrameProgress", progressData)
+                mainHandler.post {
+                    videoFrameProcessingChannel?.invokeMethod("onVideoFrameProgress", progressData)
+                }
             }
             return success
         }
@@ -118,12 +132,13 @@ class MainActivity : FlutterActivity() {
          * @return true if successful, false if channel is null
          */
         fun sendVideoFrameCancellation(cancellationData: Map<String, Any>): Boolean {
-            return if (videoFrameProcessingChannel != null) {
-                videoFrameProcessingChannel?.invokeMethod("onVideoFrameCancellation", cancellationData)
-                true
-            } else {
-                false
+            val success = videoFrameProcessingChannel != null
+            if (success) {
+                mainHandler.post {
+                    videoFrameProcessingChannel?.invokeMethod("onVideoFrameCancellation", cancellationData)
+                }
             }
+            return success
         }
     }
     
