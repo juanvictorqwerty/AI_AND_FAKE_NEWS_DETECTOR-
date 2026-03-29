@@ -297,7 +297,32 @@ class DatabaseService:
             logger.info("Database connections closed")
         except Exception as e:
             logger.error(f"Error closing database connections: {e}")
+    
 
+    async def get_token_by_value(self, token: str) -> Optional[Dict[str, Any]]:
+        
+        try:
+            async with self.async_session() as session:
+                from models.database import Token  # Import your Tokens model
+                
+                query = select(Token).where(Token.token == token).limit(1)
+                result = await session.execute(query)
+                token_record = result.scalar_one_or_none()
+                
+                if token_record:
+                    return {
+                        'id': str(token_record.id),
+                        'user_id': str(token_record.user_id),
+                        'token': token_record.token,
+                        'created_at': token_record.created_at,
+                        'expires_at': token_record.expires_at,
+            """Fetch token record by raw token value"""          'is_revoked': token_record.is_revoked
+                    }
+                return None
+                
+        except Exception as e:
+            logger.error(f"Database error fetching token: {e}")
+            return None
 
 # Create singleton instance
 db_service = DatabaseService()
