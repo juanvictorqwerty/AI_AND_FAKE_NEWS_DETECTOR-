@@ -290,6 +290,68 @@ class DatabaseService:
             logger.error(f"Error deleting analysis: {e}")
             return False
     
+    async def store_media_analysis(
+        self,
+        user_id: str,
+        is_photo: bool,
+        is_video: bool,
+        url_list: List[str],
+        score: int
+    ) -> str:
+        """
+        Store media analysis in both media_checked and media_checked_index tables
+        
+        Args:
+            user_id: User ID from JWT token
+            is_photo: Whether the media is a photo
+            is_video: Whether the media is a video
+            url_list: List of URLs for the media
+            score: Analysis score (0-100)
+            
+        Returns:
+            analysis_id: Unique analysis identifier
+        """
+        analysis_id = str(uuid.uuid4())
+        
+        try:
+            async with self.async_session() as session:
+                async with session.begin():
+                    # Create media_checked record
+                    media_record = MediaChecked(
+                        id=uuid.UUID(analysis_id),
+                        userID=uuid.UUID(user_id),
+                        isPhoto=is_photo,
+                        isVideo=is_video,
+                        urlList=url_list,
+                        score=score
+                    )
+                    session.add(media_record)
+                    
+                    # Update or create media_checked_index
+                    result = await session.execute(
+                        select(MediaCheckedIndex).where(MediaCheckedIndex.userID == uuid.UUID(user_id))
+                    )
+                    index_record = result.scalar_one_or_none()
+                    
+                    if index_record is None:
+                        index_record = MediaCheckedIndex(
+                            userID=uuid.UUID(user_id),
+                            mediaCheckedList=[analysis_id]
+                        )
+                        session.add(index_record)
+                    else:
+                        current_list = index_record.mediaCheckedList or []
+                        current_list.append(analysis_id)
+                        index_record.mediaCheckedList = current_list
+                    
+                    await session.commit()
+                    logger.info(f"Media analysis stored: {analysis_id} for user: {user_id}")
+                    return analysis_id
+                    
+        except Exception as e:
+            logger.error(f"Error storing media analysis: {e}")
+            raise Exception(f"Failed to store media analysis: {str(e)}")
+    
     async def close(self):
         """Close database connections"""
         try:
@@ -316,7 +378,7 @@ class DatabaseService:
                         'token': token_record.token,
                         'created_at': token_record.created_at,
                         'expires_at': token_record.expires_at,
-            """Fetch token record by raw token value"""          'is_revoked': token_record.is_revoked
+                        'is_revoked': token_record.is_revoked
                     }
                 return None
                 

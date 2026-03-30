@@ -188,7 +188,7 @@ class MediaUploadService {
         .writeTimeout(UPLOAD_TIMEOUT_MINUTES, TimeUnit.MINUTES)
         .build()
 
-    var baseUrl: String = ConfigManager.getBaseUrl()
+    var baseUrl: String = ConfigManager.getMediaUploadUrl()
 
     /** Derive MIME type from file extension. */
     private fun getMimeType(filePath: String): String {
