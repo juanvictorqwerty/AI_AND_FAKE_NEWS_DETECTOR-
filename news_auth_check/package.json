@@ -23,6 +23,7 @@
     "@nestjs/common": "^11.0.1",
     "@nestjs/core": "^11.0.1",
     "@nestjs/platform-express": "^11.0.1",
+    "@openrouter/sdk": "^0.10.2",
     "@types/bcryptjs": "^3.0.0",
     "axios": "^1.8.4",
     "bcryptjs": "^3.0.3",
