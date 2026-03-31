@@ -6,6 +6,7 @@ import kotlinx.coroutines.withContext
 import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.asRequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import java.io.File
 import java.util.concurrent.TimeUnit
@@ -170,6 +171,7 @@ data class VideoUploadResponse(
  * - Polling the results endpoint until completion
  * - Retry mechanism and timeout handling
  * - Multi-frame upload to /upload/video
+ * - JWT authenticated upload to /analyze/media
  */
 class MediaUploadService {
     companion object {
@@ -186,7 +188,7 @@ class MediaUploadService {
         .writeTimeout(UPLOAD_TIMEOUT_MINUTES, TimeUnit.MINUTES)
         .build()
 
-    var baseUrl: String = "http://192.168.1.152:8000"
+    var baseUrl: String = ConfigManager.getMediaUploadUrl()
 
     /** Derive MIME type from file extension. */
     private fun getMimeType(filePath: String): String {
@@ -229,10 +231,22 @@ class MediaUploadService {
                     )
                     .build()
 
-                val request = Request.Builder()
+                // Get auth token from secure storage
+                val token = ConfigManager.getAuthToken()
+                
+                val requestBuilder = Request.Builder()
                     .url("$baseUrl/upload")
                     .post(requestBody)
-                    .build()
+                
+                // Add Authorization header if token exists
+                if (!token.isNullOrEmpty()) {
+                    Log.d(TAG, "Adding Authorization header to upload request")
+                    requestBuilder.addHeader("Authorization", "Bearer $token")
+                } else {
+                    Log.w(TAG, "No auth token available - upload may fail with 401")
+                }
+                
+                val request = requestBuilder.build()
 
                 Log.d(TAG, "POST $baseUrl/upload")
                 val response = withContext(Dispatchers.IO) { client.newCall(request).execute() }
@@ -308,10 +322,22 @@ class MediaUploadService {
                     Log.d(TAG, "Added frame $index: ${file.name} (${file.length()} bytes)")
                 }
 
-                val request = Request.Builder()
+                // Get auth token from secure storage
+                val token = ConfigManager.getAuthToken()
+                
+                val requestBuilder = Request.Builder()
                     .url("$baseUrl/upload/video")
                     .post(bodyBuilder.build())
-                    .build()
+                
+                // Add Authorization header if token exists
+                if (!token.isNullOrEmpty()) {
+                    Log.d(TAG, "Adding Authorization header to video upload request")
+                    requestBuilder.addHeader("Authorization", "Bearer $token")
+                } else {
+                    Log.w(TAG, "No auth token available - video upload may fail with 401")
+                }
+                
+                val request = requestBuilder.build()
 
                 Log.d(TAG, "POST $baseUrl/upload/video with ${framePaths.size} frames")
                 val response = withContext(Dispatchers.IO) { client.newCall(request).execute() }
@@ -442,5 +468,69 @@ class MediaUploadService {
         val uploadResponse = uploadFile(filePath, fileType)
         if (!uploadResponse.success) throw Exception(uploadResponse.message)
         return pollUntilComplete(uploadResponse.fileId, onStatusUpdate = onStatusUpdate)
+    }
+
+    /**
+     * Upload media file with JWT authentication to /analyze/media endpoint.
+     *
+     * @param filePath Path to the media file
+     * @param mediaType "image" or "video"
+     * @param token Authentication token
+     * @return JSONObject with analysis results
+     * @throws Exception if upload fails
+     */
+    suspend fun uploadMediaWithAuth(filePath: String, mediaType: String, token: String): JSONObject {
+        return withContext(Dispatchers.IO) {
+            try {
+                Log.d(TAG, "Uploading media with auth: $filePath")
+
+                val file = File(filePath)
+                if (!file.exists()) throw Exception("File not found: $filePath")
+                Log.d(TAG, "File size: ${file.length()} bytes")
+
+                val requestBody = MultipartBody.Builder()
+                    .setType(MultipartBody.FORM)
+                    .addFormDataPart(
+                        "file", file.name,
+                        file.asRequestBody(getMimeType(filePath).toMediaType())
+                    )
+                    .addFormDataPart("type", mediaType)
+                    .build()
+
+                val request = Request.Builder()
+                    .url("$baseUrl/analyze/media")
+                    .addHeader("Authorization", "Bearer $token")
+                    .post(requestBody)
+                    .build()
+
+                Log.d(TAG, "POST $baseUrl/analyze/media with auth")
+                val response = client.newCall(request).execute()
+                val responseBody = response.body?.string() ?: ""
+                Log.d(TAG, "Response ${response.code}: $responseBody")
+
+                if (response.isSuccessful) {
+                    val jsonResponse = JSONObject(responseBody)
+                    Log.d(TAG, "Authenticated upload successful")
+                    return@withContext jsonResponse
+                }
+
+                // Handle authentication errors
+                if (response.code == 401) {
+                    throw Exception("Authentication failed. Please login again.")
+                }
+
+                // Parse error message
+                val errorMessage = try {
+                    JSONObject(responseBody).optString("detail", "Upload failed with status ${response.code}")
+                } catch (_: Exception) {
+                    "Upload failed with status ${response.code}"
+                }
+                throw Exception(errorMessage)
+
+            } catch (e: Exception) {
+                Log.e(TAG, "Upload error: ${e.message}")
+                throw Exception("Upload failed: ${e.message}")
+            }
+        }
     }
 }

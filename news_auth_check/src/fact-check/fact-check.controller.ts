@@ -89,7 +89,7 @@ export class FactCheckController {
         const sources = await this.webScraperService.searchWeb(queryResult.searchQuery);
         
         // Analyze verdict based on sources
-        const verdict = this.verdictAnalysisService.analyzeVerdict(claim, sources);
+        const verdict = await this.verdictAnalysisService.analyzeVerdict(claim, sources);
         
         // Create the fact-check result object
         const factCheckResult: FactCheckResult = {

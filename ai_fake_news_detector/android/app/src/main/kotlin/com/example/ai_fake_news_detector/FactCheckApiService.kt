@@ -33,7 +33,7 @@ class FactCheckApiService {
     suspend fun searchFactCheck(claim: String, token: String): FactCheckResult {
         return withContext(Dispatchers.IO) {
             try {
-                val baseUrl = ConfigManager.getBaseUrl()
+                val baseUrl = ConfigManager.getFactCheckUrl()
                 val url = "$baseUrl/fact-check/search"
                 
                 println("FactCheckApiService: Calling $url")
