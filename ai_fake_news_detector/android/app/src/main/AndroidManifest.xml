@@ -1,7 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.INTERNET"/>
-    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
@@ -41,17 +40,16 @@
             </intent-filter>
         </activity>
         
-        <!-- Share Receiver Activity for handling shared media -->
+        <!-- Share Receiver for handling shared media -->
         <activity
-            android:name=".ShareReceiverActivity"
+            android:name=".ShareReceiver"
             android:exported="true"
             android:launchMode="singleTop"
             android:taskAffinity=""
             android:grantUriPermissions="true"
-            android:theme="@style/ShareReceiverTheme"
+            android:theme="@android:style/Theme.NoDisplay"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
-            android:hardwareAccelerated="true"
-            android:windowSoftInputMode="adjustResize">
+            android:hardwareAccelerated="true">
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />

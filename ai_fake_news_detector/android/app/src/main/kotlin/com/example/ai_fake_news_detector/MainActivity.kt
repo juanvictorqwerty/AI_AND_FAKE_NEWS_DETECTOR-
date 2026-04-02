@@ -147,6 +147,9 @@ class MainActivity : FlutterActivity() {
         
         // Initialize ConfigManager
         ConfigManager.init(this)
+
+        // Initialize Share Notification Manager
+        ShareNotificationManager.initialize(this)
         
         // Auto-start notification service on first app launch
         // This ensures the service is running even if BootReceiver doesn't trigger
