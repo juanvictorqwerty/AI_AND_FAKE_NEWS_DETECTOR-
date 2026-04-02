@@ -6,6 +6,9 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import android.view.WindowManager
+import android.graphics.PixelFormat
+import android.view.Gravity
 import android.view.View
 import android.widget.Button
 import android.widget.ImageView
@@ -38,7 +41,6 @@ class ShareReceiverActivity : AppCompatActivity() {
 
     companion object {
         private const val TAG = "ShareReceiverActivity"
-        private const val AUTO_CLOSE_DELAY_MS = 5000L // 5 seconds
         private const val SUPPORTED_IMAGE_TYPES = "image/"
         private const val SUPPORTED_VIDEO_TYPES = "video/"
     }
@@ -63,6 +65,29 @@ class ShareReceiverActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Configure window as system overlay
+        window.setFlags(
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+            WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+            WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+            WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+            WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH
+        )
+
+        // Set window type for overlay
+        window.setType(WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY)
+
+        // Set window format to transparent
+        window.setFormat(PixelFormat.TRANSLUCENT)
+
+        // Position the overlay at the top of the screen
+        val params = window.attributes
+        params.gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
+        params.y = 50 // Small offset from top
+        window.attributes = params
+
         setContentView(R.layout.activity_share_receiver)
 
         // Initialize UI components
@@ -313,13 +338,7 @@ class ShareReceiverActivity : AppCompatActivity() {
                 }
             }
 
-            // Auto-close after delay
-            mainHandler.postDelayed({
-                if (!isFinishing) {
-                    Log.d(TAG, "Auto-closing after result display")
-                    finish()
-                }
-            }, AUTO_CLOSE_DELAY_MS)
+            // Keep overlay visible until explicitly closed
         }
     }
 
@@ -336,6 +355,7 @@ class ShareReceiverActivity : AppCompatActivity() {
 
     private fun showError(message: String) {
         runOnUiThread {
+            if (!::progressBar.isInitialized) return@runOnUiThread
             progressBar.visibility = View.GONE
             statusTextView.text = "Error"
             resultTextView.text = message
