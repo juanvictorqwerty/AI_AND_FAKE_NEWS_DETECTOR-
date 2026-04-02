@@ -41,6 +41,29 @@
             </intent-filter>
         </activity>
         
+        <!-- Share Receiver Activity for handling shared media -->
+        <activity
+            android:name=".ShareReceiverActivity"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:taskAffinity=""
+            android:grantUriPermissions="true"
+            android:theme="@style/ShareReceiverTheme"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+            android:hardwareAccelerated="true"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="image/*" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="video/*" />
+            </intent-filter>
+        </activity>
+        
         <!-- Foreground Service for Notification -->
         <service
             android:name=".NotificationForegroundService"

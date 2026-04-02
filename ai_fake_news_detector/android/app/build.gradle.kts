@@ -50,6 +50,12 @@ dependencies {
     // Gson for JSON parsing
     implementation("com.google.code.gson:gson:2.10.1")
     
+    // AppCompat for AndroidX Activity support
+    implementation("androidx.appcompat:appcompat:1.6.1")
+
+    // Lifecycle runtime for lifecycleScope and lifecycle-aware components
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.6.2")
+
     // WorkManager for background processing
     implementation("androidx.work:work-runtime-ktx:2.9.0")
     
