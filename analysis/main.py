@@ -11,7 +11,7 @@ from service.minio_service import MinIOService
 from service.analysis_service import AnalysisService
 from controller.upload_controller import UploadController
 from middleware.auth_middleware import validate_jwt_token
-from models.schemas import UploadResponse, AnalysisResult, HealthResponse, VideoUploadResponse
+from models.schemas import UploadResponse, AnalysisResult, HealthResponse, VideoUploadResponse, AnalysisStatus
 from service.database_service import db_service
 
 load_dotenv()
@@ -132,25 +132,27 @@ async def upload_photo(
         raise HTTPException(status_code=503, detail="Service not initialized")
     
     try:
-        result = await upload_controller.upload_file(file, background_tasks)
+        # For authenticated uploads, process synchronously to get immediate analysis results
+        result = await upload_controller.analyze_single_image(file, None)
         
         # Debug logging to see what result actually contains
         logger.debug(f"Upload result type: {type(result)}")
         logger.debug(f"Upload result attributes: {dir(result) if hasattr(result, '__dict__') else result}")
         
-        # Extract prediction and confidence from result with fallbacks
-        prediction = getattr(result, 'prediction', None) or getattr(result, 'label', None)
-        confidence = getattr(result, 'confidence', None)
-        
+        # Extract prediction and confidence from result dict
+        prediction = result.get('label', None)
+        confidence = result.get('confidence', None)
+        file_id = result.get('file_id', 'unknown')
+
         # Convert prediction to string and lowercase for comparison
         prediction_str = str(prediction).lower() if prediction else 'unknown'
-        
+
         # Store 1 for human, 0 for AI (binary score as requested)
         score = 1 if prediction_str == 'human' else 0
-        
-        # Get file URL for storage
-        file_url = getattr(result, 'file_url', None) or getattr(result, 'file_id', None) or file.filename
-        url_list = [file_url] if isinstance(file_url, str) else file_url if isinstance(file_url, list) else [str(file_url)]
+
+        # Get file URL for storage (use file_id from result)
+        file_url = file_id
+        url_list = [file_url]
         
         # Store as PHOTO: isPhoto=True, isVideo=False
         analysis_id = await db_service.store_media_analysis(
@@ -158,21 +160,31 @@ async def upload_photo(
             is_photo=True,
             is_video=False,
             url_list=url_list,
-            score=score
+            is_human_generated=(score == 1)
         )
-        
+
+        # Update results_storage for legacy endpoint compatibility
+        upload_controller.results_storage[file_id] = AnalysisResult(
+            file_id=file_id,
+            status=AnalysisStatus.COMPLETED,
+            label=prediction,
+            confidence=confidence,
+            probabilities=result.get('probabilities', {}),
+            processing_time=result.get('processing_time', 0.0)
+        )
+
         # Safely format confidence for message
         confidence_str = safe_confidence_format(confidence)
         message = f"Analysis complete: {prediction or 'unknown'} (confidence: {confidence_str})"
-        
+
         logger.info(f"Photo analysis stored for user {user['user_id']}: analysis_id={analysis_id}, prediction={prediction}, score={score}")
-        
+
         return UploadResponse(
             success=True,
-            file_id=getattr(result, 'file_id', 'unknown'),
+            file_id=result.get('file_id', 'unknown'),
             message=message,
-            file_size=getattr(result, 'file_size', None),
-            file_type=getattr(result, 'file_type', 'image'),
+            file_size=None,  # Not available in sync result
+            file_type='image',
             prediction=prediction,
             confidence=confidence,
             analysis_id=analysis_id
@@ -201,15 +213,16 @@ async def upload_video(
         raise HTTPException(status_code=503, detail="Service not initialized")
     
     try:
-        result = await upload_controller.upload_video_frames(files, background_tasks)
+        # For authenticated uploads, process synchronously to get immediate analysis results
+        result = await upload_controller.upload_video_frames(files, None)
         
         # Debug logging
         logger.debug(f"Video upload result type: {type(result)}")
         logger.debug(f"Video upload result attributes: {dir(result) if hasattr(result, '__dict__') else result}")
         
-        # Extract prediction and confidence from result with fallbacks
-        prediction = getattr(result, 'prediction', None) or getattr(result, 'final_label', None)
-        confidence = getattr(result, 'confidence', None)
+        # Extract prediction and confidence from result dict
+        prediction = result.get('prediction', None)
+        confidence = result.get('confidence', None)
         
         # Convert prediction to string and lowercase for comparison
         prediction_str = str(prediction).lower() if prediction else 'unknown'
@@ -217,9 +230,9 @@ async def upload_video(
         # Store 1 for human, 0 for AI (binary score as requested)
         score = 1 if prediction_str == 'human' else 0
         
-        # Get file URLs for storage
-        file_urls = getattr(result, 'file_urls', None) or getattr(result, 'frames', [f.filename for f in files])
-        url_list = file_urls if isinstance(file_urls, list) else [file_urls]
+        # Get file URLs for storage (use frame filenames)
+        frames = result.get('frames', [])
+        url_list = [frame.get('filename', f.filename) for frame, f in zip(frames, files)] if frames else [f.filename for f in files]
         
         # Store as VIDEO: isPhoto=False, isVideo=True
         analysis_id = await db_service.store_media_analysis(
@@ -227,7 +240,7 @@ async def upload_video(
             is_photo=False,
             is_video=True,
             url_list=url_list,
-            score=score
+            is_human_generated=(score == 1)
         )
         
         logger.info(f"Video analysis stored for user {user['user_id']}: analysis_id={analysis_id}, prediction={prediction}, score={score}")
@@ -237,12 +250,12 @@ async def upload_video(
             status="success",
             prediction=prediction,
             confidence=confidence or 0.0,
-            frame_count=getattr(result, 'frame_count', len(files)),
-            valid_frame_count=getattr(result, 'valid_frame_count', len(files)),
-            aggregated_score=getattr(result, 'aggregated_score', confidence or 0.0),
-            frames=getattr(result, 'frames', []),
-            label_distribution=getattr(result, 'label_distribution', None),
-            total_processing_time=getattr(result, 'total_processing_time', None),
+            frame_count=result.get('frame_count', len(files)),
+            valid_frame_count=result.get('valid_frame_count', len(files)),
+            aggregated_score=result.get('aggregated_score', confidence or 0.0),
+            frames=result.get('frames', []),
+            label_distribution=result.get('label_distribution', None),
+            total_processing_time=result.get('total_processing_time', None),
             analysis_id=analysis_id
         )
         
