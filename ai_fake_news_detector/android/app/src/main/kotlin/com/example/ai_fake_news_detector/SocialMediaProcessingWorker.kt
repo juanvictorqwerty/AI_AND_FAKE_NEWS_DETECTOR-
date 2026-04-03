@@ -44,19 +44,25 @@ class SocialMediaProcessingWorker(
 
             Log.d(TAG, "Detected platform: $platform")
 
-            val extractedImage = urlProcessor.extractImageFromUrl(url)
-            Log.d(TAG, "Extracted image URL: ${extractedImage.imageUrl}")
+            val extractedMedia = urlProcessor.extractImageFromUrl(url)
+            Log.d(TAG, "Extracted media URL: ${extractedMedia.mediaUrl}, type: ${extractedMedia.mediaType}")
+
+            if (extractedMedia.mediaType == SocialMediaUrlProcessor.MediaType.VIDEO) {
+                Log.d(TAG, "Video detected - checking duration constraint")
+                notificationManager.showProcessingNotification(applicationContext, taskId, "Processing video (max 10s)...")
+            }
 
             val token = ConfigManager.getAuthToken()
                 ?: return@withContext Result.failure(workDataOf("error" to "Authentication required"))
 
-            val tempImageFile = urlProcessor.downloadImage(extractedImage.imageUrl, taskId)
+            val tempMediaFile = urlProcessor.downloadMedia(extractedMedia.mediaUrl, taskId, extractedMedia.mediaType)
 
-            val result = urlProcessor.uploadToBackend(tempImageFile, taskId, token)
+            val mediaTypeString = if (extractedMedia.mediaType == SocialMediaUrlProcessor.MediaType.VIDEO) "video" else "image"
+            val result = urlProcessor.uploadToBackend(tempMediaFile, taskId, token, mediaTypeString)
 
             notificationManager.showResultNotification(applicationContext, taskId, result)
 
-            urlProcessor.cleanupTempFile(tempImageFile)
+            urlProcessor.cleanupTempFile(tempMediaFile)
 
             Log.d(TAG, "Completed social media processing for task: $taskId")
             Result.success()
