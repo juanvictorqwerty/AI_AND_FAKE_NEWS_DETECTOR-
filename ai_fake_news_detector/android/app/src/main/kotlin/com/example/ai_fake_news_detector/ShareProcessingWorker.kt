@@ -73,7 +73,7 @@ class ShareProcessingWorker(
     }
 
     private suspend fun pollForResult(fileId: String): AnalysisResult {
-        val maxAttempts = 30 // 30 attempts * 2 seconds = 1 minute timeout
+        val maxAttempts = 3// 3 attempts 
         var attempts = 0
 
         while (attempts < maxAttempts) {

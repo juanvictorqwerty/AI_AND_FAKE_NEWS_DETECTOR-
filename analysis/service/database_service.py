@@ -71,10 +71,12 @@ class DatabaseService:
         is_photo: bool,
         is_video: bool,
         url_list: List[str],
-        score: int
+        is_human_generated: bool
     ) -> str:
         """
         Insert a row into media_checked and update media_checked_index.
+
+        Stores 1 if the analysis marks the media as human-generated, 0 otherwise.
 
         Column names match the Drizzle schema exactly:
           media_checked        → id, created_at, userID, isPhoto, isVideo, url_list, score
@@ -101,7 +103,7 @@ class DatabaseService:
                             "is_photo": is_photo,
                             "is_video": is_video,
                             "url_list": json.dumps(url_list),
-                            "score":    score,
+                            "score":    1 if is_human_generated else 0,
                         }
                     )
 
