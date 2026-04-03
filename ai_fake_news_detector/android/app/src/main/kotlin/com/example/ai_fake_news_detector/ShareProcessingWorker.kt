@@ -49,12 +49,29 @@ class ShareProcessingWorker(
                 ?: return@withContext Result.failure(workDataOf("error" to "Authentication required"))
 
             // Upload with authentication
-            val uploadResponse = uploadService.uploadMediaWithAuth(file.absolutePath, mimeType, token)
-            val fileId = uploadResponse.optString("file_id", "")
-                ?: return@withContext Result.failure(workDataOf("error" to "Invalid upload response"))
+            val mediaType = if (mimeType.startsWith("image/")) "image" else "video"
+            val uploadResponse = uploadService.uploadMediaWithAuth(file.absolutePath, mediaType, token)
 
-            // Poll for results
-            val result = pollForResult(fileId)
+            // Check if response contains synchronous result
+            val data = uploadResponse.optJSONObject("data")
+            val result = if (data != null) {
+                // Synchronous analysis result
+                val analysisId = data.optString("analysis_id", "")
+                val prediction = data.optString("prediction", "")
+                val confidence = data.optDouble("confidence", 0.0).takeIf { !it.isNaN() }
+                AnalysisResult(
+                    fileId = analysisId,
+                    status = "completed",
+                    label = prediction,
+                    confidence = confidence,
+                    processingTime = 0.0
+                )
+            } else {
+                // Fallback: extract file_id and poll (for legacy compatibility)
+                val fileId = uploadResponse.optString("file_id", "")
+                    ?: return@withContext Result.failure(workDataOf("error" to "Invalid upload response"))
+                pollForResult(fileId)
+            }
 
             // Update notification with result
             ShareNotificationManager.showResultNotification(applicationContext, taskId, result)

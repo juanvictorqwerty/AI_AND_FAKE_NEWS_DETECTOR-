@@ -10,6 +10,7 @@ from dotenv import load_dotenv
 from service.minio_service import MinIOService
 from service.analysis_service import AnalysisService
 from controller.upload_controller import UploadController
+from controller.authenticated_upload_controller import router
 from middleware.auth_middleware import validate_jwt_token
 from models.schemas import UploadResponse, AnalysisResult, HealthResponse, VideoUploadResponse, AnalysisStatus
 from service.database_service import db_service
@@ -73,6 +74,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(router)
 
 logger.add("logs/app.log", rotation="10 MB", retention="7 days", level="INFO")
 

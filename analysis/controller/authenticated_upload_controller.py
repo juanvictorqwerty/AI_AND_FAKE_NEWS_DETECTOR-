@@ -119,19 +119,12 @@ async def analyze_media(
             prediction = 'real'
         
         # Store results in database using existing tables
-        analysis_details = {
-            'probabilities': probabilities,
-            'processing_time': processing_time,
-            'filename': file.filename,
-            'file_size': file_size
-        }
-        
-        analysis_id = await db_service.store_analysis_result(
+        analysis_id = await db_service.store_media_analysis(
             user_id=user['user_id'],
-            media_type=type,
-            prediction=prediction,
-            confidence=confidence,
-            analysis_details=analysis_details
+            is_photo=(type == 'image'),
+            is_video=(type == 'video'),
+            url_list=[file.filename],
+            is_human_generated=(prediction.lower() in ['real', 'human'])
         )
         
         total_time = time.time() - start_time

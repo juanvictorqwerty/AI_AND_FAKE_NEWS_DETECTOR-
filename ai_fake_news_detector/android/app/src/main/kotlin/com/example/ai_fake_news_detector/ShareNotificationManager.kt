@@ -78,6 +78,7 @@ object ShareNotificationManager {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             // You can add extras here to navigate to results screen
             putExtra("show_last_result", true)
+            putExtra("analysis_id", result.fileId)
         }
 
         val pendingIntent = PendingIntent.getActivity(
