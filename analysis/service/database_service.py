@@ -71,7 +71,9 @@ class DatabaseService:
         is_photo: bool,
         is_video: bool,
         url_list: List[str],
-        is_human_generated: bool
+        is_human_generated: bool,
+        source: Optional[str] = None,
+        original_url: Optional[str] = None
     ) -> str:
         """
         Insert a row into media_checked and update media_checked_index.

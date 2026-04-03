@@ -42,8 +42,10 @@ class ShareReceiver : AppCompatActivity() {
                 @Suppress("DEPRECATION")
                 val uri = intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)
                 val mimeType = intent.type
+                val text = intent.getStringExtra(Intent.EXTRA_TEXT)
 
                 if (uri != null && mimeType != null) {
+                    // Handle media files (existing functionality)
                     Log.d(TAG, "Received shared media: $uri, type: $mimeType")
 
                     // Generate unique task ID
@@ -54,8 +56,14 @@ class ShareReceiver : AppCompatActivity() {
 
                     // Show initial notification
                     ShareNotificationManager.showProcessingNotification(this, taskId)
+
+                } else if (text != null && text.isNotBlank()) {
+                    // Handle text shares (potentially URLs)
+                    Log.d(TAG, "Received shared text: $text")
+                    handleSharedText(text)
+
                 } else {
-                    Log.w(TAG, "Received share intent but missing URI or mime type")
+                    Log.w(TAG, "Received share intent but missing URI/mime type or text")
                 }
             }
             else -> {
@@ -95,6 +103,53 @@ class ShareReceiver : AppCompatActivity() {
         )
 
         Log.d(TAG, "Enqueued background processing for task: $taskId")
+    }
+
+    private fun handleSharedText(text: String) {
+        // Extract URLs from the shared text
+        val urlRegex = Regex("""https?://[^\s]+""")
+        val urls = urlRegex.findAll(text).map { it.value }.toList()
+
+        if (urls.isNotEmpty()) {
+            val url = urls.first() // Take the first URL found
+            Log.d(TAG, "Found URL in shared text: $url")
+
+            // Generate unique task ID
+            val taskId = UUID.randomUUID().toString()
+
+            // Start background URL processing
+            enqueueUrlProcessing(url, taskId)
+
+            // Show initial notification
+            ShareNotificationManager.showProcessingNotification(this, taskId)
+        } else {
+            Log.d(TAG, "No URLs found in shared text")
+            // Could show a toast or notification that no URLs were found
+        }
+    }
+
+    private fun enqueueUrlProcessing(url: String, taskId: String) {
+        val workRequest = OneTimeWorkRequestBuilder<UrlProcessingWorker>()
+            .setInputData(
+                workDataOf(
+                    UrlProcessingWorker.KEY_URL to url,
+                    UrlProcessingWorker.KEY_TASK_ID to taskId
+                )
+            )
+            .setConstraints(
+                Constraints.Builder()
+                    .setRequiredNetworkType(NetworkType.CONNECTED)
+                    .build()
+            )
+            .build()
+
+        WorkManager.getInstance(this).enqueueUniqueWork(
+            "url_processing_$taskId",
+            ExistingWorkPolicy.REPLACE,
+            workRequest
+        )
+
+        Log.d(TAG, "Enqueued background URL processing for task: $taskId")
     }
 
     private fun copyUriToLocalFile(uri: Uri, mimeType: String, taskId: String): File? {

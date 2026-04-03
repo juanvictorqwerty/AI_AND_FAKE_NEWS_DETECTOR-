@@ -535,4 +535,62 @@ class MediaUploadService {
             }
         }
     }
+
+    /**
+     * Analyze a URL for media content.
+     * Submits the URL to the backend for asynchronous analysis.
+     */
+    suspend fun analyzeUrl(url: String, token: String): JSONObject = withContext(Dispatchers.IO) {
+        try {
+            val client = OkHttpClient.Builder()
+                .connectTimeout(30, TimeUnit.SECONDS)
+                .readTimeout(60, TimeUnit.SECONDS)
+                .writeTimeout(30, TimeUnit.SECONDS)
+                .build()
+
+            // Create JSON payload
+            val jsonPayload = JSONObject().apply {
+                put("url", url)
+            }
+
+            val requestBody = jsonPayload.toString()
+                .toRequestBody("application/json; charset=utf-8".toMediaType())
+
+            val request = Request.Builder()
+                .url("${ConfigManager.getBaseUrl()}/analyze/url")
+                .post(requestBody)
+                .addHeader("Authorization", "Bearer $token")
+                .addHeader("Content-Type", "application/json")
+                .build()
+
+            Log.d(TAG, "Sending URL analysis request to: ${request.url}")
+
+            client.newCall(request).execute().use { response ->
+                val responseBody = response.body?.string() ?: "{}"
+
+                if (response.isSuccessful) {
+                    Log.d(TAG, "URL analysis request successful")
+                    JSONObject(responseBody)
+                } else {
+                    Log.e(TAG, "URL analysis failed with code: ${response.code}")
+
+                    if (response.code == 401) {
+                        throw Exception("Authentication failed. Please login again.")
+                    }
+
+                    // Parse error message
+                    val errorMessage = try {
+                        JSONObject(responseBody).optString("detail", "URL analysis failed with status ${response.code}")
+                    } catch (_: Exception) {
+                        "URL analysis failed with status ${response.code}"
+                    }
+                    throw Exception(errorMessage)
+                }
+            }
+
+        } catch (e: Exception) {
+            Log.e(TAG, "URL analysis error: ${e.message}")
+            throw Exception("URL analysis failed: ${e.message}")
+        }
+    }
 }
