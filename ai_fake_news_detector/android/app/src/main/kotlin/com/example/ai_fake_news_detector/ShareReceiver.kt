@@ -129,19 +129,40 @@ class ShareReceiver : AppCompatActivity() {
     }
 
     private fun enqueueUrlProcessing(url: String, taskId: String) {
-        val workRequest = OneTimeWorkRequestBuilder<UrlProcessingWorker>()
-            .setInputData(
-                workDataOf(
-                    UrlProcessingWorker.KEY_URL to url,
-                    UrlProcessingWorker.KEY_TASK_ID to taskId
-                )
-            )
-            .setConstraints(
-                Constraints.Builder()
-                    .setRequiredNetworkType(NetworkType.CONNECTED)
+        val platform = detectSocialMediaPlatform(url)
+        
+        val workRequest = when (platform) {
+            Platform.INSTAGRAM, Platform.FACEBOOK -> {
+                OneTimeWorkRequestBuilder<SocialMediaProcessingWorker>()
+                    .setInputData(
+                        workDataOf(
+                            SocialMediaProcessingWorker.KEY_URL to url,
+                            SocialMediaProcessingWorker.KEY_TASK_ID to taskId
+                        )
+                    )
+                    .setConstraints(
+                        Constraints.Builder()
+                            .setRequiredNetworkType(NetworkType.CONNECTED)
+                            .build()
+                    )
                     .build()
-            )
-            .build()
+            }
+            else -> {
+                OneTimeWorkRequestBuilder<UrlProcessingWorker>()
+                    .setInputData(
+                        workDataOf(
+                            UrlProcessingWorker.KEY_URL to url,
+                            UrlProcessingWorker.KEY_TASK_ID to taskId
+                        )
+                    )
+                    .setConstraints(
+                        Constraints.Builder()
+                            .setRequiredNetworkType(NetworkType.CONNECTED)
+                            .build()
+                    )
+                    .build()
+            }
+        }
 
         WorkManager.getInstance(this).enqueueUniqueWork(
             "url_processing_$taskId",
@@ -149,7 +170,23 @@ class ShareReceiver : AppCompatActivity() {
             workRequest
         )
 
-        Log.d(TAG, "Enqueued background URL processing for task: $taskId")
+        Log.d(TAG, "Enqueued background URL processing for task: $taskId with platform: $platform")
+    }
+
+    private enum class Platform {
+        INSTAGRAM,
+        FACEBOOK,
+        UNSUPPORTED
+    }
+
+    private fun detectSocialMediaPlatform(url: String): Platform {
+        return when {
+            url.contains("instagram.com", ignoreCase = true) -> Platform.INSTAGRAM
+            url.contains("facebook.com", ignoreCase = true) ||
+            url.contains("fb.com", ignoreCase = true) ||
+            url.contains("fb.watch", ignoreCase = true) -> Platform.FACEBOOK
+            else -> Platform.UNSUPPORTED
+        }
     }
 
     private fun copyUriToLocalFile(uri: Uri, mimeType: String, taskId: String): File? {
