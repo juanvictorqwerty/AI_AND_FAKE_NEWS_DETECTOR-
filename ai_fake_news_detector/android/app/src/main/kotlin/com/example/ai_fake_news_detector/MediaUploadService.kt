@@ -125,6 +125,7 @@ data class VideoUploadResponse(
     val frames: List<FrameResult>,
     val labelDistribution: Map<String, LabelStats>,
     val totalProcessingTime: Double,
+    val analysisId: String? = null,
     val error: String? = null
 ) {
     companion object {
@@ -153,6 +154,7 @@ data class VideoUploadResponse(
                 frames              = framesList,
                 labelDistribution   = labelDistMap,
                 totalProcessingTime = json.optDouble("total_processing_time", 0.0),
+                analysisId          = json.optString("analysis_id", null),
                 error               = if (json.isNull("error")) null else json.optString("error", null)
             )
         }

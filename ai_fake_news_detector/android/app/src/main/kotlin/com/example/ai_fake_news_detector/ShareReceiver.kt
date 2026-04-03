@@ -6,6 +6,8 @@ import android.os.Bundle
 import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
 import androidx.work.*
+import java.io.File
+import java.io.FileOutputStream
 import java.util.*
 
 /**
@@ -37,6 +39,7 @@ class ShareReceiver : AppCompatActivity() {
     private fun handleShareIntent(intent: Intent) {
         when (intent.action) {
             Intent.ACTION_SEND -> {
+                @Suppress("DEPRECATION")
                 val uri = intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)
                 val mimeType = intent.type
 
@@ -62,10 +65,18 @@ class ShareReceiver : AppCompatActivity() {
     }
 
     private fun enqueueMediaProcessing(uri: Uri, mimeType: String, taskId: String) {
+        // Copy URI content to local file immediately to preserve temporary permissions
+        val localFile = copyUriToLocalFile(uri, mimeType, taskId)
+        if (localFile == null) {
+            Log.e(TAG, "Failed to copy shared media to local file")
+            ShareNotificationManager.showErrorNotification(this, taskId, "Failed to access shared media")
+            return
+        }
+
         val workRequest = OneTimeWorkRequestBuilder<ShareProcessingWorker>()
             .setInputData(
                 workDataOf(
-                    ShareProcessingWorker.KEY_URI to uri.toString(),
+                    ShareProcessingWorker.KEY_FILE_PATH to localFile.absolutePath,
                     ShareProcessingWorker.KEY_MIME_TYPE to mimeType,
                     ShareProcessingWorker.KEY_TASK_ID to taskId
                 )
@@ -84,5 +95,31 @@ class ShareReceiver : AppCompatActivity() {
         )
 
         Log.d(TAG, "Enqueued background processing for task: $taskId")
+    }
+
+    private fun copyUriToLocalFile(uri: Uri, mimeType: String, taskId: String): File? {
+        return try {
+            val contentResolver = contentResolver
+
+            // Create temp file
+            val extension = when {
+                mimeType.startsWith("image/") -> ".jpg"
+                mimeType.startsWith("video/") -> ".mp4"
+                else -> ".tmp"
+            }
+
+            val tempFile = File(cacheDir, "shared_$taskId$extension")
+
+            contentResolver.openInputStream(uri)?.use { input ->
+                FileOutputStream(tempFile).use { output ->
+                    input.copyTo(output)
+                }
+            }
+
+            tempFile
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to copy URI to local file", e)
+            null
+        }
     }
 }

@@ -26,26 +26,27 @@ import java.util.concurrent.locks.ReentrantLock
 class FrameExtractor private constructor(
     private val context: Context,
     private val videoPath: String,
-    private val outputDir: File
+    private val outputDir: File,
+    private val maxDurationSeconds: Int
 ) {
     companion object {
         private const val TAG = "FrameExtractor"
         private const val TARGET_FRAME_RATE = 1
-        private const val MAX_VIDEO_DURATION_SECONDS = 45
 
         @Throws(IllegalArgumentException::class, IOException::class)
         fun create(
             context: Context,
             videoPath: String,
-            outputDir: File
+            outputDir: File,
+            maxDurationSeconds: Int = 45
         ): FrameExtractor {
             val durationMs = getVideoDurationMs(videoPath)
             val durationSec = durationMs / 1000
 
-            if (durationSec > MAX_VIDEO_DURATION_SECONDS) {
+            if (durationSec > maxDurationSeconds) {
                 throw IllegalArgumentException(
                     "Video duration ($durationSec seconds) exceeds maximum allowed " +
-                            "duration of $MAX_VIDEO_DURATION_SECONDS seconds"
+                            "duration of $maxDurationSeconds seconds"
                 )
             }
 
@@ -54,7 +55,7 @@ class FrameExtractor private constructor(
                 release()
             }
 
-            return FrameExtractor(context, videoPath, outputDir)
+            return FrameExtractor(context, videoPath, outputDir, maxDurationSeconds)
         }
 
         private fun getVideoDurationMs(videoPath: String): Long {
@@ -232,6 +233,12 @@ class FrameExtractor private constructor(
                     currentTimeMs = presentationTimeUs / 1000
 
                     val currentSecond = (currentTimeMs / 1000).toInt()
+
+                    // Stop if we've reached the maximum duration
+                    if (currentSecond >= maxDurationSeconds) {
+                        sawEOS = true
+                        break
+                    }
 
                     if (currentSecond > lastExtractedSecond) {
                         val outputBuffer = videoCodec.getOutputBuffer(outputBufferIndex)
