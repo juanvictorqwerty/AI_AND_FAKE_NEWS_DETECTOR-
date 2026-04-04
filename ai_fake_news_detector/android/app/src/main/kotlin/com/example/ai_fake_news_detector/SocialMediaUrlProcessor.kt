@@ -240,7 +240,7 @@ class SocialMediaUrlProcessor(
         
         if (extractedUrl != null && extractedUrl!!.isNotBlank()) {
             Log.d(TAG, "Successfully extracted Instagram media: $extractedUrl, type: $mediaType")
-            ExtractedMedia(extractedUrl!!, platform, mediaType)
+            ExtractedMedia(extractedUrl!!, Platform.INSTAGRAM, mediaType)
         } else {
             val errorMsg = error ?: "Unknown extraction error"
             Log.e(TAG, "Extraction failed: $errorMsg")
@@ -376,7 +376,7 @@ class SocialMediaUrlProcessor(
         
         if (extractedUrl != null && extractedUrl!!.isNotBlank()) {
             Log.d(TAG, "Successfully extracted Facebook media: $extractedUrl, type: $mediaType")
-            ExtractedMedia(extractedUrl!!, platform, mediaType)
+            ExtractedMedia(extractedUrl!!, Platform.FACEBOOK, mediaType)
         } else {
             val errorMsg = error ?: "Unknown extraction error"
             Log.e(TAG, "Facebook extraction failed: $errorMsg")
