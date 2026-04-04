@@ -100,7 +100,14 @@ class HistoryItem {
           return 'UNVERIFIED';
       }
     } else {
-      return 'AI SCORE: ${this.score ?? 0}%';
+      // For media checks: score=1 means HUMAN, score=0 means AI
+      if (this.score == 1) {
+        return 'HUMAN';
+      } else if (this.score == 0) {
+        return 'AI';
+      } else {
+        return 'UNKNOWN';
+      }
     }
   }
 
@@ -115,10 +122,14 @@ class HistoryItem {
           return Colors.orange;
       }
     } else {
-      final scoreValue = this.score ?? 0;
-      if (scoreValue >= 70) return Colors.green;
-      if (scoreValue >= 40) return Colors.orange;
-      return Colors.red;
+      // For media checks: score=1 means HUMAN (green), score=0 means AI (red)
+      if (this.score == 1) {
+        return Colors.green;
+      } else if (this.score == 0) {
+        return Colors.red;
+      } else {
+        return Colors.orange; // Unknown score
+      }
     }
   }
 
@@ -133,10 +144,14 @@ class HistoryItem {
           return Icons.help;
       }
     } else {
-      final scoreValue = this.score ?? 0;
-      if (scoreValue >= 70) return Icons.check_circle;
-      if (scoreValue >= 40) return Icons.warning;
-      return Icons.error;
+      // For media checks: score=1 means HUMAN (person), score=0 means AI (android/robot)
+      if (this.score == 1) {
+        return Icons.person;
+      } else if (this.score == 0) {
+        return Icons.android;
+      } else {
+        return Icons.help; // Unknown score
+      }
     }
   }
 
