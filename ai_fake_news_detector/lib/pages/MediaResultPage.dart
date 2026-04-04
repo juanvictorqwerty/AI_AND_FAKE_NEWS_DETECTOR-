@@ -5,11 +5,11 @@ import 'package:ai_fake_news_detector/services/media_analysis_channel.dart';
 import 'package:ai_fake_news_detector/models/analysis_result.dart';
 import 'package:ai_fake_news_detector/models/video_frame_result.dart';
 import 'package:ai_fake_news_detector/utils/global.colors.dart';
-import 'package:ai_fake_news_detector/widgets/media_preview_widget.dart';
-import 'package:ai_fake_news_detector/widgets/file_info_widget.dart';
-import 'package:ai_fake_news_detector/widgets/analysis_result_widget.dart';
-import 'package:ai_fake_news_detector/widgets/video_frame_result_widget.dart';
-import 'package:ai_fake_news_detector/widgets/action_buttons_widget.dart';
+import 'package:ai_fake_news_detector/widgets/media_result/media_preview_widget.dart';
+import 'package:ai_fake_news_detector/widgets/media_result/file_info_widget.dart';
+import 'package:ai_fake_news_detector/widgets/media_result/analysis_result_widget.dart';
+import 'package:ai_fake_news_detector/widgets/media_result/video_frame_result_widget.dart';
+import 'package:ai_fake_news_detector/widgets/media_result/action_buttons_widget.dart';
 
 /// Displays the media preview and the analysis result.
 ///

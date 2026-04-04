@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:ai_fake_news_detector/models/video_frame_result.dart';
 import 'package:ai_fake_news_detector/utils/global.colors.dart';
-import 'package:ai_fake_news_detector/widgets/probability_bar_widget.dart';
-import 'package:ai_fake_news_detector/widgets/frame_prediction_tile_widget.dart';
+import 'package:ai_fake_news_detector/widgets/media_result/probability_bar_widget.dart';
+import 'package:ai_fake_news_detector/widgets/media_result/frame_prediction_tile_widget.dart';
 
 /// A widget for displaying video frame analysis results.
 class VideoFrameResultWidget extends StatelessWidget {

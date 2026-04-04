@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 import 'package:ai_fake_news_detector/utils/global.colors.dart';
-import 'package:ai_fake_news_detector/widgets/placeholder_widget.dart';
+import 'package:ai_fake_news_detector/widgets/media_result/placeholder_widget.dart';
 
 /// A widget for displaying media preview (image or video).
 class MediaPreviewWidget extends StatefulWidget {
