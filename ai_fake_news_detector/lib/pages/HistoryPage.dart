@@ -39,7 +39,7 @@ class _HistoryPageState extends State<HistoryPage> {
     });
 
     try {
-      final response = await _historyService.getFactCheckHistory(
+      final response = await _historyService.getCombinedHistory(
         token: _authController.token.value,
       );
 
@@ -175,18 +175,6 @@ class HistoryItemCard extends StatelessWidget {
 
   const HistoryItemCard({super.key, required this.item});
 
-  String _getVerdictText(String verdict) {
-    switch (verdict.toLowerCase()) {
-      case 'true':
-        return 'VERIFIED TRUE';
-      case 'false':
-        return 'VERIFIED FALSE';
-      case 'unverified':
-      default:
-        return 'UNVERIFIED';
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Card(
@@ -223,7 +211,7 @@ class HistoryItemCard extends StatelessWidget {
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        _getVerdictText(item.verdict),
+                        item.verdictText,
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
@@ -241,108 +229,176 @@ class HistoryItemCard extends StatelessWidget {
             ),
             const SizedBox(height: 12),
 
-            // Claim
-            const Text(
-              'Claim:',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-                color: Colors.grey,
-              ),
-            ),
-            const SizedBox(height: 4),
+            // Title
             Text(
-              item.claim,
+              item.displayTitle,
               style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w500,
                 height: 1.4,
               ),
             ),
-            const SizedBox(height: 12),
 
-            // Reason
-            if (item.reason.isNotEmpty) ...[
-              const Text(
-                'Reason:',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                item.reason,
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: Colors.black87,
-                  height: 1.3,
-                ),
-              ),
-              const SizedBox(height: 12),
-            ],
-
-            // Sources
-            if (item.sources.isNotEmpty) ...[
-              const Text(
-                'Sources:',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Wrap(
-                spacing: 4,
-                runSpacing: 4,
-                children: item.sources.map((source) {
-                  return Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.blue[50],
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.blue[200]!),
-                    ),
-                    child: Text(
-                      source,
-                      style: const TextStyle(fontSize: 12, color: Colors.blue),
-                    ),
-                  );
-                }).toList(),
-              ),
-            ],
-
-            // Confidence
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                const Text(
-                  'Confidence: ',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.grey,
-                  ),
-                ),
-                Text(
-                  item.confidence.toUpperCase(),
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: _getConfidenceColor(item.confidence),
-                  ),
-                ),
-              ],
-            ),
+            // Additional details based on type
+            if (item.type == HistoryItemType.factCheck)
+              ..._buildFactCheckDetails()
+            else
+              ..._buildMediaCheckDetails(),
           ],
         ),
       ),
     );
+  }
+
+  List<Widget> _buildFactCheckDetails() {
+    final widgets = <Widget>[];
+
+    if (item.reason?.isNotEmpty == true) {
+      widgets.addAll([
+        const SizedBox(height: 12),
+        const Text(
+          'Reason:',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            color: Colors.grey,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          item.reason!,
+          style: const TextStyle(
+            fontSize: 14,
+            color: Colors.black87,
+            height: 1.3,
+          ),
+        ),
+      ]);
+    }
+
+    if (item.sources?.isNotEmpty == true) {
+      widgets.addAll([
+        const SizedBox(height: 12),
+        const Text(
+          'Sources:',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            color: Colors.grey,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Wrap(
+          spacing: 4,
+          runSpacing: 4,
+          children: item.sources!.map((source) {
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.blue[50],
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.blue[200]!),
+              ),
+              child: Text(
+                source,
+                style: const TextStyle(fontSize: 12, color: Colors.blue),
+              ),
+            );
+          }).toList(),
+        ),
+      ]);
+    }
+
+    if (item.confidence != null) {
+      widgets.addAll([
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            const Text(
+              'Confidence: ',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey,
+              ),
+            ),
+            Text(
+              item.confidence!.toUpperCase(),
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: _getConfidenceColor(item.confidence!),
+              ),
+            ),
+          ],
+        ),
+      ]);
+    }
+
+    return widgets;
+  }
+
+  List<Widget> _buildMediaCheckDetails() {
+    final widgets = <Widget>[];
+
+    if (item.urlList?.isNotEmpty == true) {
+      widgets.addAll([
+        const SizedBox(height: 12),
+        const Text(
+          'URLs:',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            color: Colors.grey,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Wrap(
+          spacing: 4,
+          runSpacing: 4,
+          children: item.urlList!.map((url) {
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.green[50],
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.green[200]!),
+              ),
+              child: Text(
+                url,
+                style: TextStyle(fontSize: 12, color: Colors.green[700]),
+              ),
+            );
+          }).toList(),
+        ),
+      ]);
+    }
+
+    widgets.addAll([
+      const SizedBox(height: 12),
+      Row(
+        children: [
+          const Text(
+            'Type: ',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey,
+            ),
+          ),
+          Text(
+            item.mediaTypeText,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: Colors.black87,
+            ),
+          ),
+        ],
+      ),
+    ]);
+
+    return widgets;
   }
 
   Color _getConfidenceColor(String confidence) {

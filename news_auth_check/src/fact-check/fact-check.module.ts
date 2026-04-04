@@ -4,6 +4,7 @@ import { WebScraperService } from './web-scraper.service';
 import { SearchQueryService } from './search-query.service';
 import { VerdictAnalysisService } from './verdict-analysis.service';
 import { FactCheckStorageService } from './fact-check-storage.service';
+import { MediaStorageService } from './media-storage.service';
 import { AuthModule } from '../auth/auth.module';
 import { DatabaseModule } from '../db/db.module';
 
@@ -37,6 +38,7 @@ import { DatabaseModule } from '../db/db.module';
         SearchQueryService,
         VerdictAnalysisService,
         FactCheckStorageService,
+        MediaStorageService,
     ],
     exports: [
         WebScraperService,

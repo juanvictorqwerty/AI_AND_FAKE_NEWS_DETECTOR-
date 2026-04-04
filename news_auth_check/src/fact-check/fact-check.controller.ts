@@ -14,6 +14,7 @@ import { WebScraperService } from './web-scraper.service';
 import { SearchQueryService } from './search-query.service';
 import { VerdictAnalysisService, VerdictResult } from './verdict-analysis.service';
 import { FactCheckStorageService, FactCheckResult } from './fact-check-storage.service';
+import { MediaStorageService, MediaCheckResult } from './media-storage.service';
 import { SearchSourceDto, ClaimType } from './dto';
 import { JwtAuthGuard } from '../auth/auth.guard';
 
@@ -35,6 +36,7 @@ export class FactCheckController {
         private readonly searchQueryService: SearchQueryService,
         private readonly verdictAnalysisService: VerdictAnalysisService,
         private readonly factCheckStorageService: FactCheckStorageService,
+        private readonly mediaStorageService: MediaStorageService,
     ) {}
 
     /**
@@ -188,6 +190,70 @@ export class FactCheckController {
             };
         } catch (error) {
             this.logger.error(`Failed to retrieve fact-check history: ${error.message}`);
+            return {
+                success: false,
+                count: 0,
+                results: [],
+            };
+        }
+    }
+
+    /**
+     * GET /fact-check/media-history
+     * Retrieve all media check results for the authenticated user
+     *
+     * Example Request:
+     * GET /fact-check/media-history
+     * Authorization: Bearer <your-jwt-token>
+     *
+     * Example Response:
+     * {
+     *   "success": true,
+     *   "count": 3,
+     *   "results": [
+     *     {
+     *       "id": "uuid",
+     *       "isPhoto": true,
+     *       "isVideo": false,
+     *       "urlList": ["https://example.com/image.jpg"],
+     *       "score": 85,
+     *       "createdAt": "2024-01-01T00:00:00.000Z"
+     *     },
+     *     ...
+     *   ]
+     * }
+     */
+    @Get('media-history')
+    @HttpCode(HttpStatus.OK)
+    async getMediaHistory(@Req() req: Request): Promise<{
+        success: boolean;
+        count: number;
+        results: MediaCheckResult[];
+    }> {
+        const user = (req as any).user;
+        this.logger.log(`Retrieving media check history for user: ${user?.userId || 'unknown'}`);
+
+        if (!user?.userId) {
+            this.logger.warn('User ID not found');
+            return {
+                success: false,
+                count: 0,
+                results: [],
+            };
+        }
+
+        try {
+            const results = await this.mediaStorageService.getMediaCheckResults(user.userId);
+
+            this.logger.log(`Retrieved ${results.length} media check results for user ${user.userId}`);
+
+            return {
+                success: true,
+                count: results.length,
+                results,
+            };
+        } catch (error) {
+            this.logger.error(`Failed to retrieve media check history: ${error.message}`);
             return {
                 success: false,
                 count: 0,
