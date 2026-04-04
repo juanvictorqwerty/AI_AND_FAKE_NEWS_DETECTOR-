@@ -220,8 +220,8 @@ class HistoryService extends GetxService {
 
       final results = await Future.wait([factCheckFuture, mediaHistoryFuture]);
 
-      final factCheckResponse = results[0] as Map<String, dynamic>;
-      final mediaResponse = results[1] as Map<String, dynamic>;
+      final factCheckResponse = results[0];
+      final mediaResponse = results[1];
 
       // Combine results
       final allResults = <HistoryItem>[];
