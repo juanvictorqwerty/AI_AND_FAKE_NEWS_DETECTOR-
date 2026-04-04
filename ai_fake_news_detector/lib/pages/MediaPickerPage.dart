@@ -7,8 +7,8 @@ import 'package:ai_fake_news_detector/services/media_picker_service.dart';
 import 'package:ai_fake_news_detector/services/media_analysis_channel.dart';
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
-const _accent = Color(0xFF7C3AED);
-const _accent2 = Color(0xFFA855F7);
+const _accent = Color.fromARGB(255, 17, 101, 235);
+const _accent2 = Color.fromARGB(255, 18, 154, 226);
 const _surface = Color(0xFFF7F6FF);
 const _surface2 = Color(0xFFFFFFFF);
 const _surface3 = Color(0xFFF0EEF9);

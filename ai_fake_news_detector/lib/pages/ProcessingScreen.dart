@@ -5,7 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:ai_fake_news_detector/services/media_analysis_channel.dart';
 
 // ─── Design tokens (same palette as MediaPickerPage) ─────────────────────────
-const _accent = Color(0xFF7C3AED);
+const _accent = Color.fromARGB(255, 15, 162, 241);
 const _surface = Color(0xFFF7F6FF);
 const _surface2 = Color(0xFFFFFFFF);
 const _surface3 = Color(0xFFF0EEF9);

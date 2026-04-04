@@ -1,13 +1,15 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 import 'package:video_player/video_player.dart';
-import 'package:ai_fake_news_detector/services/media_picker_service.dart';
 import 'package:ai_fake_news_detector/services/media_analysis_channel.dart';
 import 'package:ai_fake_news_detector/models/analysis_result.dart';
 import 'package:ai_fake_news_detector/models/video_frame_result.dart';
 import 'package:ai_fake_news_detector/utils/global.colors.dart';
-import 'package:ai_fake_news_detector/widgets/big_button.global.dart';
+import 'package:ai_fake_news_detector/widgets/media_preview_widget.dart';
+import 'package:ai_fake_news_detector/widgets/file_info_widget.dart';
+import 'package:ai_fake_news_detector/widgets/analysis_result_widget.dart';
+import 'package:ai_fake_news_detector/widgets/video_frame_result_widget.dart';
+import 'package:ai_fake_news_detector/widgets/action_buttons_widget.dart';
 
 /// Displays the media preview and the analysis result.
 ///
@@ -36,8 +38,6 @@ class MediaResultPage extends StatefulWidget {
 }
 
 class _MediaResultPageState extends State<MediaResultPage> {
-  final MediaPickerService _mediaPickerService = Get.find<MediaPickerService>();
-
   String? _filePath;
   String? _fileType;
   int? _fileSize;
@@ -66,8 +66,8 @@ class _MediaResultPageState extends State<MediaResultPage> {
 
   /// Read route arguments and decide whether we already have a result.
   Future<void> _initializeMedia() async {
-    final args = ModalRoute.of(context)?.settings.arguments
-        as Map<String, dynamic>?;
+    final args =
+        ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
 
     if (args == null) {
       // No arguments at all – stay in loading and wait for the channel.
@@ -168,655 +168,17 @@ class _MediaResultPageState extends State<MediaResultPage> {
     });
   }
 
-  Widget _buildMediaPreview() {
-    if (_filePath == null) {
-      return _placeholder(Icons.error_outline, 'No file provided');
-    }
-
-    if (_fileType == 'image') {
-      return Container(
-        height: 300,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey[400]!),
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: Image.file(
-            File(_filePath!),
-            fit: BoxFit.contain,
-            errorBuilder: (_, __, ___) =>
-                _placeholder(Icons.error_outline, 'Error loading image',
-                    color: Colors.red[400]),
-          ),
-        ),
-      );
-    }
-
-    if (_fileType == 'video') {
-      if (_videoController != null && _videoController!.value.isInitialized) {
-        return Container(
-          height: 300,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.grey[400]!),
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                AspectRatio(
-                  aspectRatio: _videoController!.value.aspectRatio,
-                  child: VideoPlayer(_videoController!),
-                ),
-                IconButton(
-                  icon: Icon(
-                    _isVideoPlaying ? Icons.pause : Icons.play_arrow,
-                    size: 64,
-                    color: Colors.white,
-                  ),
-                  onPressed: _toggleVideoPlayback,
-                ),
-              ],
-            ),
-          ),
-        );
-      }
-      return Container(
-        height: 200,
-        decoration: BoxDecoration(
-          color: Colors.grey[200],
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey[400]!),
-        ),
-        child: Center(
-            child: CircularProgressIndicator(color: GlobalColors.mainColor)),
-      );
-    }
-
-    return const SizedBox.shrink();
-  }
-
-  Widget _placeholder(IconData icon, String text, {Color? color}) {
-    return Container(
-      height: 200,
-      decoration: BoxDecoration(
-        color: Colors.grey[200],
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[400]!),
-      ),
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 64, color: color ?? Colors.grey[600]),
-            const SizedBox(height: 16),
-            Text(text,
-                style: TextStyle(
-                    fontSize: 16, color: color ?? Colors.grey[600])),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFileInfo() {
-    if (_filePath == null) return const SizedBox.shrink();
-
-    return Container(
-      margin: const EdgeInsets.only(top: 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.grey[100],
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[300]!),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(
-                _fileType == 'video' ? Icons.videocam : Icons.image,
-                color: GlobalColors.mainColor,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  _filePath!.split('/').last,
-                  style: const TextStyle(
-                      fontWeight: FontWeight.bold, fontSize: 14),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-          if (_fileSize != null) ...[
-            const SizedBox(height: 8),
-            Text('Size: ${(_fileSize! / 1024 / 1024).toStringAsFixed(2)} MB',
-                style: TextStyle(fontSize: 13, color: Colors.grey[600])),
-          ],
-          if (_videoDuration != null) ...[
-            const SizedBox(height: 4),
-            Text('Duration: ${_videoDuration}s',
-                style: TextStyle(fontSize: 13, color: Colors.grey[600])),
-          ],
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Icon(Icons.check_circle, color: Colors.green[600], size: 20),
-              const SizedBox(width: 8),
-              Text('File validated successfully',
-                  style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.green[700],
-                      fontWeight: FontWeight.w500)),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAnalysisResult() {
-    if (_isLoading) {
-      return Container(
-        margin: const EdgeInsets.only(top: 16),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.grey[100],
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey[300]!),
-        ),
-        child: const Center(child: CircularProgressIndicator()),
-      );
-    }
-
-    if (_error != null) {
-      return Container(
-        margin: const EdgeInsets.only(top: 16),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.red[50],
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.red[300]!),
-        ),
-        child: Row(
-          children: [
-            Icon(Icons.error_outline, color: Colors.red[700]),
-            const SizedBox(width: 8),
-            Expanded(
-                child: Text(_error!,
-                    style: TextStyle(color: Colors.red[700]))),
-          ],
-        ),
-      );
-    }
-
-    final result = _analysisResult;
-    if (result == null) return const SizedBox.shrink();
-
-    // Determine colors based on confidence level
-    final bool isLowConfidence = result.confidence < 0.7;
-    final Color backgroundColor;
-    final Color borderColor;
-    final Color iconColor;
-    final Color textColor;
-    final IconData icon;
-
-    if (isLowConfidence) {
-      // Low confidence (< 60%) - use yellow
-      backgroundColor = Colors.yellow[50]!;
-      borderColor = Colors.yellow[300]!;
-      iconColor = Colors.yellow[700]!;
-      textColor = Colors.yellow[700]!;
-      icon = Icons.warning_amber_rounded;
-    } else if (result.isAi) {
-      // High confidence AI - use red
-      backgroundColor = Colors.red[50]!;
-      borderColor = Colors.red[300]!;
-      iconColor = Colors.red[700]!;
-      textColor = Colors.red[700]!;
-      icon = Icons.smart_toy;
-    } else {
-      // High confidence Human - use green
-      backgroundColor = Colors.green[50]!;
-      borderColor = Colors.green[300]!;
-      iconColor = Colors.green[700]!;
-      textColor = Colors.green[700]!;
-      icon = Icons.person;
-    }
-
-    return Container(
-      margin: const EdgeInsets.only(top: 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: backgroundColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: borderColor),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(
-                icon,
-                color: iconColor,
-                size: 32,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      result.label.toUpperCase(),
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: textColor,
-                      ),
-                    ),
-                    Text(
-                      'Confidence: ${result.confidencePercentage}',
-                      style: TextStyle(
-                          fontSize: 16, color: Colors.grey[700]),
-                    ),
-                    if (isLowConfidence)
-                      Text(
-                        'Low confidence - result may be unreliable',
-                        style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.yellow[800],
-                            fontStyle: FontStyle.italic),
-                      ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          _buildProbabilityBar(
-              'AI', result.aiProbability, Colors.red[400]!),
-          const SizedBox(height: 8),
-          _buildProbabilityBar(
-              'Human', result.humanProbability, Colors.green[400]!),
-          if (result.hasError) ...[
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.red[100],
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.error_outline, color: Colors.red[700]),
-                  const SizedBox(width: 8),
-                  Expanded(
-                      child: Text(result.error!,
-                          style: TextStyle(color: Colors.red[700]))),
-                ],
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildProbabilityBar(String label, double value, Color color) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(label,
-                style: const TextStyle(
-                    fontSize: 14, fontWeight: FontWeight.w500)),
-            Text('${(value * 100).toStringAsFixed(1)}%',
-                style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: color)),
-          ],
-        ),
-        const SizedBox(height: 4),
-        LinearProgressIndicator(
-          value: value,
-          backgroundColor: Colors.grey[300],
-          valueColor: AlwaysStoppedAnimation<Color>(color),
-          minHeight: 8,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildVideoFrameResult() {
-    final result = _videoFrameResult;
-    if (result == null) return const SizedBox.shrink();
-
-    // Determine colors based on confidence level
-    final bool isLowConfidence = result.confidence < 0.7;
-    final Color backgroundColor;
-    final Color borderColor;
-    final Color iconColor;
-    final Color textColor;
-    final IconData icon;
-
-    if (isLowConfidence) {
-      backgroundColor = Colors.yellow[50]!;
-      borderColor = Colors.yellow[300]!;
-      iconColor = Colors.yellow[700]!;
-      textColor = Colors.yellow[700]!;
-      icon = Icons.warning_amber_rounded;
-    } else if (result.isAi) {
-      backgroundColor = Colors.red[50]!;
-      borderColor = Colors.red[300]!;
-      iconColor = Colors.red[700]!;
-      textColor = Colors.red[700]!;
-      icon = Icons.smart_toy;
-    } else {
-      backgroundColor = Colors.green[50]!;
-      borderColor = Colors.green[300]!;
-      iconColor = Colors.green[700]!;
-      textColor = Colors.green[700]!;
-      icon = Icons.person;
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Aggregated result card
-        Container(
-          margin: const EdgeInsets.only(top: 16),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: backgroundColor,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: borderColor),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Icon(icon, color: iconColor, size: 32),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          result.prediction.toUpperCase(),
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: textColor,
-                          ),
-                        ),
-                        Text(
-                          'Confidence: ${result.confidencePercentage}',
-                          style: TextStyle(
-                              fontSize: 16, color: Colors.grey[700]),
-                        ),
-                        if (isLowConfidence)
-                          Text(
-                            'Low confidence - result may be unreliable',
-                            style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.yellow[800],
-                                fontStyle: FontStyle.italic),
-                          ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              _buildProbabilityBar(
-                  'AI', result.labelDistribution['ai']?.avgConfidence ?? 0.0, Colors.red[400]!),
-              const SizedBox(height: 8),
-              _buildProbabilityBar(
-                  'Human', result.labelDistribution['human']?.avgConfidence ?? 0.0, Colors.green[400]!),
-              const SizedBox(height: 16),
-              // Aggregated score
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.grey[100],
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Aggregated Score',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.grey[700],
-                      ),
-                    ),
-                    Text(
-                      result.aggregatedScorePercentage,
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: GlobalColors.mainColor,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 8),
-              // Frame count info
-              Text(
-                '${result.validFrameCount}/${result.frameCount} valid frames analyzed',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: Colors.grey[600],
-                ),
-              ),
-              if (result.totalProcessingTime > 0)
-                Text(
-                  'Processing time: ${result.totalProcessingTime.toStringAsFixed(2)}s',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.grey[600],
-                  ),
-                ),
-            ],
-          ),
-        ),
-        // Per-frame predictions
-        if (result.frames.isNotEmpty) ...[
-          const SizedBox(height: 16),
-          Container(
-            margin: const EdgeInsets.only(top: 16),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.grey[100],
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.grey[300]!),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Per-Frame Predictions (${result.frames.length} frames)',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.grey[800],
-                  ),
-                ),
-                const SizedBox(height: 12),
-                ...result.frames.map((frame) => _buildFramePredictionTile(frame)),
-              ],
-            ),
-          ),
-        ],
-        // Label distribution
-        if (result.labelDistribution.isNotEmpty) ...[
-          const SizedBox(height: 16),
-          Container(
-            margin: const EdgeInsets.only(top: 16),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.grey[100],
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.grey[300]!),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Label Distribution',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.grey[800],
-                  ),
-                ),
-                const SizedBox(height: 12),
-                ...result.labelDistribution.entries.map((entry) {
-                  final stats = entry.value;
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          entry.key.toUpperCase(),
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.grey[700],
-                          ),
-                        ),
-                        Text(
-                          '${stats.count} frames (${stats.avgConfidencePercentage})',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }),
-              ],
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-
-  Widget _buildFramePredictionTile(FramePrediction frame) {
-    final bool isAi = frame.isAi;
-    final Color color = isAi ? Colors.red[400]! : Colors.green[400]!;
-    final IconData icon = isAi ? Icons.smart_toy : Icons.person;
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey[300]!),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: color, size: 20),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  frame.filename,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.grey[800],
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-                Text(
-                  '${frame.prediction.toUpperCase()} - ${frame.confidencePercentage}',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[600],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildActionButtons() {
-    if (_filePath == null) return const SizedBox.shrink();
-
+  @override
+  Widget build(BuildContext context) {
     final hasResult = _analysisResult != null;
     final hasError = _error != null;
 
-    return Column(
-      children: [
-        const SizedBox(height: 24),
-        if (hasError)
-          BigButton(
-            text: 'Retry Upload',
-            onTap: () async {
-              // Fix 6 – startAnalysis returns the taskId.
-              final taskId = await MediaAnalysisChannel.startAnalysis(
-                  _filePath!, _fileType!);
-              Navigator.pushNamed(
-                context,
-                '/processing',
-                arguments: {
-                  'filePath': _filePath,
-                  'fileType': _fileType,
-                  'fileSize': _fileSize,
-                  'taskId': taskId,
-                },
-              );
-            },
-            color: Colors.orange,
-          ),
-        if (hasResult || !hasError)
-          BigButton(
-            text: 'Upload New File',
-            onTap: () => Navigator.pop(context),
-            color: Colors.green,
-          ),
-        const SizedBox(height: 12),
-        BigButton(
-          text: 'Back to Home',
-          onTap: () =>
-              Navigator.popUntil(context, (route) => route.isFirst),
-          color: Colors.grey[600]!,
-        ),
-      ],
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: GlobalColors.mainColor,
         title: const Text(
           'Analysis Result',
-          style: TextStyle(
-              color: Colors.white, fontWeight: FontWeight.bold),
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
@@ -828,13 +190,34 @@ class _MediaResultPageState extends State<MediaResultPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _buildMediaPreview(),
-            _buildFileInfo(),
+            MediaPreviewWidget(
+              filePath: _filePath,
+              fileType: _fileType,
+              videoController: _videoController,
+              isVideoPlaying: _isVideoPlaying,
+              onTogglePlayback: _toggleVideoPlayback,
+            ),
+            FileInfoWidget(
+              filePath: _filePath,
+              fileType: _fileType,
+              fileSize: _fileSize,
+              videoDuration: _videoDuration,
+            ),
             if (_videoFrameResult != null)
-              _buildVideoFrameResult()
+              VideoFrameResultWidget(result: _videoFrameResult)
             else
-              _buildAnalysisResult(),
-            _buildActionButtons(),
+              AnalysisResultWidget(
+                isLoading: _isLoading,
+                error: _error,
+                result: _analysisResult,
+              ),
+            ActionButtonsWidget(
+              filePath: _filePath,
+              fileType: _fileType,
+              fileSize: _fileSize,
+              hasResult: hasResult,
+              hasError: hasError,
+            ),
           ],
         ),
       ),
