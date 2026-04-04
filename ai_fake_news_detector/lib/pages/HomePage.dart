@@ -1,4 +1,3 @@
-
 import 'package:ai_fake_news_detector/pages/FactCheckPage.dart';
 import 'package:ai_fake_news_detector/pages/MediaPickerPage.dart';
 import 'package:ai_fake_news_detector/pages/SettingsPage.dart';
@@ -45,60 +44,69 @@ class _HomepageState extends State<Homepage> {
             color: Colors.white,
             fontSize: 20,
             fontWeight: FontWeight.bold,
-            height: 50
+            height: 50,
           ),
         ),
         actions: <Widget>[
-            IconButton( 
-              icon: Icon(
-                Icons.settings,
-                color: Colors.white,
-              ),
-              onPressed: () {
+          IconButton(
+            icon: Icon(Icons.history, color: Colors.white),
+            onPressed: () {
+              Navigator.pushNamed(context, '/history');
+            },
+            tooltip: 'History',
+          ),
+          IconButton(
+            icon: Icon(Icons.settings, color: Colors.white),
+            onPressed: () {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const SettingsPage()),
               );
             },
-          )
+            tooltip: 'Settings',
+          ),
         ],
       ),
       body: SingleChildScrollView(
         child: SafeArea(
-          child:Container(
+          child: Container(
             width: double.infinity,
-              padding: const EdgeInsets.all(15.0),
-                child: Column(
-                  mainAxisAlignment:MainAxisAlignment.center ,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    const SizedBox(height: 20),
-                    BigButton(
-                      text: "Fact Check",
-                      onTap: (){
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder:(context)=>const FactCheckPage()),
-                          );
-                      },
-                      color: Colors.green
-                    ),
-
-                    const SizedBox(height: 20),
-
-                    BigButton(
-                      text: "Upload Media",
-                      onTap: (){
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder:(context)=>const MediaPickerPage()),
-                        );
-                      },
-                      color: Colors.deepPurpleAccent
-                    )
-                  ],
+            padding: const EdgeInsets.all(15.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                const SizedBox(height: 20),
+                BigButton(
+                  text: "Fact Check",
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const FactCheckPage(),
+                      ),
+                    );
+                  },
+                  color: Colors.green,
                 ),
-            )
+
+                const SizedBox(height: 20),
+
+                BigButton(
+                  text: "Upload Media",
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const MediaPickerPage(),
+                      ),
+                    );
+                  },
+                  color: Colors.deepPurpleAccent,
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );

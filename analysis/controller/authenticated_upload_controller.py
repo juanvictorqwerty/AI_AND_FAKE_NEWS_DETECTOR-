@@ -8,7 +8,7 @@ Uses existing media_checked and media_checked_index tables.
 import os
 import time
 from typing import Dict, Any
-from fastapi import APIRouter, UploadFile, File, HTTPException, Depends, Form
+from fastapi import APIRouter, UploadFile, File, HTTPException, Depends, Form, BackgroundTasks
 from loguru import logger
 from dotenv import load_dotenv
 
@@ -288,3 +288,116 @@ async def delete_analysis(
             status_code=500,
             detail=f"Failed to delete analysis: {str(e)}"
         )
+
+
+# =============================================================================
+# URL-BASED MEDIA ANALYSIS ENDPOINTS
+# =============================================================================
+
+@router.post("/url")
+async def analyze_url(
+    url_data: Dict[str, str],
+    background_tasks: BackgroundTasks,
+    user: Dict[str, Any] = Depends(validate_jwt_token)
+):
+    """
+    Analyze media from URL with JWT authentication and background processing.
+
+    This endpoint accepts a URL, extracts the media, analyzes it using AI,
+    and stores results in the database. Processing happens asynchronously.
+
+    Args:
+        url_data: Dictionary containing "url" field
+        background_tasks: FastAPI background tasks for async processing
+        user: User information from JWT token
+
+    Returns:
+        JSON response with status and analysis initiation confirmation
+
+    Raises:
+        HTTPException: 400 for validation errors, 401 for auth errors, 500 for processing errors
+    """
+    try:
+        url = url_data.get('url', '').strip()
+        if not url:
+            raise HTTPException(
+                status_code=400,
+                detail="URL is required"
+            )
+
+        logger.info(f"Starting URL analysis for user: {user['user_id']}, URL: {url}")
+
+        # Add background task for URL processing
+        background_tasks.add_task(process_url_analysis, url, user['user_id'])
+
+        return {
+            "status": "success",
+            "message": "URL analysis started. Results will be available shortly.",
+            "url": url
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error initiating URL analysis: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to start URL analysis: {str(e)}"
+        )
+
+
+async def process_url_analysis(url: str, user_id: str):
+    """
+    Background task to process URL analysis.
+
+    Args:
+        url: The URL to analyze
+        user_id: ID of the user requesting analysis
+    """
+    from service.url_extractor_service import URLExtractorService
+    from service.url_processing_service import URLProcessingService
+    from service.analysis_service import AnalysisService
+    from service.database_service import db_service
+
+    try:
+        logger.info(f"Processing URL analysis for user {user_id}: {url}")
+
+        # Step 1: Extract image URL from the provided URL
+        extractor_service = URLExtractorService()
+        image_url = await extractor_service.extract_image_url(url)
+
+        # Step 2: Download the image
+        processing_service = URLProcessingService()
+        image_data, mime_type = await processing_service.validate_and_process_image(image_url)
+
+        # Step 3: Analyze the image
+        analysis_service = AnalysisService()
+        analysis_result = await analysis_service.analyze_image(image_data)
+
+        # Step 4: Store results in database
+        prediction = analysis_result.get('label', 'unknown')
+        confidence = analysis_result.get('confidence', 0.0)
+        probabilities = analysis_result.get('probabilities', {})
+
+        # Normalize prediction
+        if prediction.lower() in ['ai', 'artificial', 'fake']:
+            prediction = 'fake'
+        elif prediction.lower() in ['human', 'real']:
+            prediction = 'real'
+
+        # Store with source="url" and original_url (include metadata in url_list for now)
+        url_list = [image_url, f"source:url", f"original_url:{url}"]
+
+        analysis_id = await db_service.store_media_analysis(
+            user_id=user_id,
+            is_photo=True,
+            is_video=False,
+            url_list=url_list,
+            is_human_generated=(prediction.lower() in ['real', 'human'])
+        )
+
+        logger.info(f"URL analysis completed for user {user_id}: analysis_id={analysis_id}, prediction={prediction}")
+
+    except Exception as e:
+        logger.error(f"Error in background URL analysis for user {user_id}, URL {url}: {e}")
+        # Note: In a production system, you might want to store failed analyses or notify the user

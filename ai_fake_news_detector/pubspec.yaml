@@ -40,7 +40,8 @@ dependencies:
   http: ^1.2.0
   permission_handler: ^11.3.1
   url_launcher: ^6.2.5
-  
+  google_fonts: ^6.2.1
+
   # Media picker dependencies
   image_picker: ^1.0.7  # For picking images and videos from gallery
   video_player: ^2.8.2  # For video playback and duration extraction

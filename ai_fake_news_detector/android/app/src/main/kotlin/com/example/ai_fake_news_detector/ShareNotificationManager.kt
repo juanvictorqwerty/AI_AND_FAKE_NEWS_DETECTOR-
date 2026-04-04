@@ -42,13 +42,13 @@ object ShareNotificationManager {
         }
     }
 
-    fun showProcessingNotification(context: Context, taskId: String) {
+    fun showProcessingNotification(context: Context, taskId: String, message: String = "Your file is being processed") {
         val notificationId = PROCESSING_NOTIFICATION_BASE_ID + taskId.hashCode()
 
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.mipmap.ic_launcher)
             .setContentTitle("Analyzing media...")
-            .setContentText("Your file is being processed")
+            .setContentText(message)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setOngoing(true)
             .setProgress(0, 0, true)

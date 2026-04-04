@@ -1,22 +1,24 @@
 import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:video_player/video_player.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:ai_fake_news_detector/services/media_picker_service.dart';
 import 'package:ai_fake_news_detector/services/media_analysis_channel.dart';
-import 'package:ai_fake_news_detector/utils/global.colors.dart';
-import 'package:ai_fake_news_detector/widgets/big_button.global.dart';
+import 'package:ai_fake_news_detector/widgets/media_picker/media_picker_app_bar.dart';
+import 'package:ai_fake_news_detector/widgets/media_picker/loading_banner.dart';
+import 'package:ai_fake_news_detector/widgets/media_picker/drop_zone.dart';
+import 'package:ai_fake_news_detector/widgets/media_picker/pick_row.dart';
+import 'package:ai_fake_news_detector/widgets/media_picker/file_info_card.dart';
+import 'package:ai_fake_news_detector/widgets/media_picker/error_banner.dart';
+import 'package:ai_fake_news_detector/widgets/media_picker/proceed_button.dart';
 
-/// Page for picking and previewing media files (images and videos)
-///
-/// This page provides:
-/// - Buttons to pick image, video, or any media
-/// - Preview of selected file
-/// - File metadata display (size, duration)
-/// - Loading indicators
-/// - Error messages
-/// - Navigation to processing and result pages
+// ─── Design tokens ────────────────────────────────────────────────────────────
+const _accent = Color.fromARGB(255, 17, 101, 235);
+const _surface = Color(0xFFF7F6FF);
+const _textPrimary = Color(0xFF1A1730);
+const _textMuted = Color(0xFF7B78A0);
+
 class MediaPickerPage extends StatefulWidget {
   const MediaPickerPage({super.key});
 
@@ -24,10 +26,10 @@ class MediaPickerPage extends StatefulWidget {
   State<MediaPickerPage> createState() => _MediaPickerPageState();
 }
 
-class _MediaPickerPageState extends State<MediaPickerPage> {
+class _MediaPickerPageState extends State<MediaPickerPage>
+    with SingleTickerProviderStateMixin {
   final MediaPickerService _mediaPickerService = Get.find<MediaPickerService>();
-  
-  // State variables
+
   bool _isLoading = false;
   String? _selectedFilePath;
   String? _fileType;
@@ -35,453 +37,177 @@ class _MediaPickerPageState extends State<MediaPickerPage> {
   int? _videoDuration;
   String? _errorMessage;
   VideoPlayerController? _videoController;
-  
+
+  // Which pick button is active: 'image' | 'video' | 'any'
+  String _activeType = 'image';
+
+  late final AnimationController _btnAnim;
+
   @override
-  void dispose() {
-    // Clean up video controller when page is disposed
-    _videoController?.dispose();
-    super.dispose();
-  }
-  
-  /// Pick an image from gallery
-  Future<void> _pickImage() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-      _selectedFilePath = null;
-      _fileType = null;
-      _fileSize = null;
-      _videoDuration = null;
-    });
-    
-    try {
-      final result = await _mediaPickerService.pickImage();
-      
-      if (result['success']) {
-        setState(() {
-          _selectedFilePath = result['filePath'];
-          _fileType = result['fileType'];
-          _fileSize = result['fileSize'];
-          _errorMessage = null;
-        });
-      } else {
-        setState(() {
-          _errorMessage = result['message'];
-        });
-        
-        // Show settings dialog if permission is permanently denied
-        if (result['permanentlyDenied'] == true) {
-          _showPermissionDeniedDialog();
-        }
-      }
-    } catch (e) {
-      setState(() {
-        _errorMessage = 'Error picking image: ${e.toString()}';
-      });
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-    }
-  }
-  
-  /// Pick a video from gallery
-  Future<void> _pickVideo() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-      _selectedFilePath = null;
-      _fileType = null;
-      _fileSize = null;
-      _videoDuration = null;
-    });
-    
-    // Dispose previous video controller if exists
-    await _videoController?.dispose();
-    _videoController = null;
-    
-    try {
-      final result = await _mediaPickerService.pickVideo();
-      
-      if (result['success']) {
-        setState(() {
-          _selectedFilePath = result['filePath'];
-          _fileType = result['fileType'];
-          _fileSize = result['fileSize'];
-          _videoDuration = result['duration'];
-          _errorMessage = null;
-        });
-        
-        // Initialize video controller for preview
-        if (_fileType == 'video' && _selectedFilePath != null) {
-          _videoController = VideoPlayerController.file(File(_selectedFilePath!));
-          await _videoController!.initialize();
-          setState(() {});
-        }
-      } else {
-        setState(() {
-          _errorMessage = result['message'];
-        });
-        
-        // Show settings dialog if permission is permanently denied
-        if (result['permanentlyDenied'] == true) {
-          _showPermissionDeniedDialog();
-        }
-      }
-    } catch (e) {
-      setState(() {
-        _errorMessage = 'Error picking video: ${e.toString()}';
-      });
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-    }
-  }
-  
-  /// Pick any media (image or video) from gallery
-  Future<void> _pickMedia() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-      _selectedFilePath = null;
-      _fileType = null;
-      _fileSize = null;
-      _videoDuration = null;
-    });
-    
-    // Dispose previous video controller if exists
-    await _videoController?.dispose();
-    _videoController = null;
-    
-    try {
-      final result = await _mediaPickerService.pickMedia();
-      
-      if (result['success']) {
-        setState(() {
-          _selectedFilePath = result['filePath'];
-          _fileType = result['fileType'];
-          _fileSize = result['fileSize'];
-          _videoDuration = result['duration'];
-          _errorMessage = null;
-        });
-        
-        // Initialize video controller for preview if video
-        if (_fileType == 'video' && _selectedFilePath != null) {
-          _videoController = VideoPlayerController.file(File(_selectedFilePath!));
-          await _videoController!.initialize();
-          setState(() {});
-        }
-      } else {
-        setState(() {
-          _errorMessage = result['message'];
-        });
-        
-        // Show settings dialog if permission is permanently denied
-        if (result['permanentlyDenied'] == true) {
-          _showPermissionDeniedDialog();
-        }
-      }
-    } catch (e) {
-      setState(() {
-        _errorMessage = 'Error picking media: ${e.toString()}';
-      });
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-    }
-  }
-  
-  /// Show dialog when permission is permanently denied
-  void _showPermissionDeniedDialog() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Row(
-            children: [
-              Icon(Icons.warning_amber_rounded, color: Colors.orange),
-              SizedBox(width: 8),
-              Text('Permission Required'),
-            ],
-          ),
-          content: const Text(
-            'Storage permission has been permanently denied. '
-            'Please enable it in app settings to access your gallery.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-                _mediaPickerService.openAppSettings();
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: GlobalColors.mainColor,
-                foregroundColor: Colors.white,
-              ),
-              child: const Text('Open Settings'),
-            ),
-          ],
-        );
-      },
+  void initState() {
+    super.initState();
+    _btnAnim = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 120),
     );
   }
-  
-  /// Navigate to processing screen and start upload
+
+  @override
+  void dispose() {
+    _videoController?.dispose();
+    _btnAnim.dispose();
+    super.dispose();
+  }
+
+  // ── Pickers ─────────────────────────────────────────────────────────────────
+
+  Future<void> _pickImage() async {
+    setState(() {
+      _activeType = 'image';
+      _isLoading = true;
+      _errorMessage = null;
+      _selectedFilePath = null;
+      _fileType = null;
+      _fileSize = null;
+      _videoDuration = null;
+    });
+    try {
+      final result = await _mediaPickerService.pickImage();
+      _handlePickResult(result);
+    } catch (e) {
+      setState(() => _errorMessage = 'Error picking image: ${e.toString()}');
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _pickVideo() async {
+    setState(() {
+      _activeType = 'video';
+      _isLoading = true;
+      _errorMessage = null;
+      _selectedFilePath = null;
+      _fileType = null;
+      _fileSize = null;
+      _videoDuration = null;
+    });
+    await _videoController?.dispose();
+    _videoController = null;
+    try {
+      final result = await _mediaPickerService.pickVideo();
+      await _handlePickResult(result);
+    } catch (e) {
+      setState(() => _errorMessage = 'Error picking video: ${e.toString()}');
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _pickMedia() async {
+    setState(() {
+      _activeType = 'any';
+      _isLoading = true;
+      _errorMessage = null;
+      _selectedFilePath = null;
+      _fileType = null;
+      _fileSize = null;
+      _videoDuration = null;
+    });
+    await _videoController?.dispose();
+    _videoController = null;
+    try {
+      final result = await _mediaPickerService.pickMedia();
+      await _handlePickResult(result);
+    } catch (e) {
+      setState(() => _errorMessage = 'Error picking media: ${e.toString()}');
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _handlePickResult(Map<String, dynamic> result) async {
+    if (result['success'] == true) {
+      setState(() {
+        _selectedFilePath = result['filePath'];
+        _fileType = result['fileType'];
+        _fileSize = result['fileSize'];
+        _videoDuration = result['duration'];
+        _errorMessage = null;
+      });
+      if (_fileType == 'video' && _selectedFilePath != null) {
+        _videoController = VideoPlayerController.file(File(_selectedFilePath!));
+        await _videoController!.initialize();
+        setState(() {});
+      }
+    } else {
+      setState(() => _errorMessage = result['message']);
+      if (result['permanentlyDenied'] == true) _showPermissionDeniedDialog();
+    }
+  }
+
   void _proceedWithFile() {
     if (_selectedFilePath != null && _fileType != null) {
-      debugPrint('MediaPickerPage: Starting upload for file: $_selectedFilePath, type: $_fileType');
-      // Start upload and processing using Kotlin service
-      // startAnalysis generates its own taskId and returns it
       MediaAnalysisChannel.startAnalysis(_selectedFilePath!, _fileType!);
-      
-      // Navigate to processing screen
       Navigator.pushNamed(context, '/processing');
     }
   }
-  
-  /// Build media preview widget
-  Widget _buildMediaPreview() {
-    if (_selectedFilePath == null) {
-      return Container(
-        height: 200,
-        decoration: BoxDecoration(
-          color: Colors.grey[200],
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey[400]!),
-        ),
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.image_outlined,
-                size: 64,
-                color: Colors.grey[600],
+
+  // ── Dialogs ──────────────────────────────────────────────────────────────────
+
+  void _showPermissionDeniedDialog() {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            const Icon(Icons.lock_outline_rounded, color: _accent, size: 22),
+            const SizedBox(width: 8),
+            Text(
+              'Permission Required',
+              style: GoogleFonts.syne(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: _textPrimary,
               ),
-              const SizedBox(height: 16),
-              Text(
-                'No file selected',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.grey[600],
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-    
-    if (_fileType == 'image') {
-      return Container(
-        height: 300,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey[400]!),
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: Image.file(
-            File(_selectedFilePath!),
-            fit: BoxFit.contain,
-            errorBuilder: (context, error, stackTrace) {
-              return Container(
-                color: Colors.grey[200],
-                child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.error_outline,
-                        size: 64,
-                        color: Colors.red[400],
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Error loading image',
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Colors.red[400],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-      );
-    } else if (_fileType == 'video') {
-      if (_videoController != null && _videoController!.value.isInitialized) {
-        return Container(
-          height: 300,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.grey[400]!),
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                AspectRatio(
-                  aspectRatio: _videoController!.value.aspectRatio,
-                  child: VideoPlayer(_videoController!),
-                ),
-                // Play/Pause button
-                IconButton(
-                  icon: Icon(
-                    _videoController!.value.isPlaying ? Icons.pause : Icons.play_arrow,
-                    size: 64,
-                    color: Colors.white,
-                  ),
-                  onPressed: () {
-                    setState(() {
-                      if (_videoController!.value.isPlaying) {
-                        _videoController!.pause();
-                      } else {
-                        _videoController!.play();
-                      }
-                    });
-                  },
-                ),
-              ],
-            ),
-          ),
-        );
-      } else {
-        return Container(
-          height: 200,
-          decoration: BoxDecoration(
-            color: Colors.grey[200],
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.grey[400]!),
-          ),
-          child: Center(
-            child: CircularProgressIndicator(
-              color: GlobalColors.mainColor,
-            ),
-          ),
-        );
-      }
-    }
-    
-    return const SizedBox.shrink();
-  }
-  
-  /// Build file info widget
-  Widget _buildFileInfo() {
-    if (_selectedFilePath == null) {
-      return const SizedBox.shrink();
-    }
-    
-    return Container(
-      margin: const EdgeInsets.only(top: 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.grey[100],
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[300]!),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(
-                _fileType == 'image' ? Icons.image : Icons.videocam,
-                color: GlobalColors.mainColor,
-                size: 24,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                _fileType == 'image' ? 'Image' : 'Video',
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          if (_fileSize != null)
-            Row(
-              children: [
-                Icon(
-                  Icons.file_present,
-                  color: Colors.grey[600],
-                  size: 20,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  'Size: ${_mediaPickerService.getFileSizeFormatted(_fileSize!)}',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[700],
-                  ),
-                ),
-              ],
-            ),
-          if (_videoDuration != null) ...[
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Icon(
-                  Icons.timer,
-                  color: Colors.grey[600],
-                  size: 20,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  'Duration: ${_mediaPickerService.getDurationFormatted(_videoDuration!)}',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[700],
-                  ),
-                ),
-              ],
             ),
           ],
-        ],
-      ),
-    );
-  }
-  
-  /// Build error message widget
-  Widget _buildErrorMessage() {
-    if (_errorMessage == null) {
-      return const SizedBox.shrink();
-    }
-    
-    return Container(
-      margin: const EdgeInsets.only(top: 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.red[50],
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.red[300]!),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            Icons.error_outline,
-            color: Colors.red[700],
-            size: 24,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
+        ),
+        content: Text(
+          'Storage permission has been permanently denied. '
+          'Please enable it in app settings to access your gallery.',
+          style: GoogleFonts.dmSans(fontSize: 14, color: _textMuted),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
             child: Text(
-              _errorMessage!,
-              style: TextStyle(
+              'Cancel',
+              style: GoogleFonts.syne(
                 fontSize: 14,
-                color: Colors.red[700],
+                fontWeight: FontWeight.w600,
+                color: _textMuted,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _mediaPickerService.openAppSettings();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _accent,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              elevation: 0,
+            ),
+            child: Text(
+              'Open Settings',
+              style: GoogleFonts.syne(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
               ),
             ),
           ),
@@ -489,98 +215,47 @@ class _MediaPickerPageState extends State<MediaPickerPage> {
       ),
     );
   }
-  
+
+  // ── Build ────────────────────────────────────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: GlobalColors.mainColor,
-        title: const Text(
-          'Upload Media',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ),
+      backgroundColor: _surface,
+      appBar: const MediaPickerAppBar(),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Loading indicator
-            if (_isLoading)
-              Container(
-                margin: const EdgeInsets.only(bottom: 16),
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: Colors.blue[50],
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.blue[300]!),
-                ),
-                child: Column(
-                  children: [
-                    CircularProgressIndicator(
-                      color: GlobalColors.mainColor,
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Processing media...',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.blue[700],
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
+            if (_isLoading) const LoadingBanner(),
+            DropZone(
+              selectedFilePath: _selectedFilePath,
+              fileType: _fileType,
+              videoController: _videoController,
+              onTap: _pickMedia,
+            ),
+            const SizedBox(height: 16),
+            if (!_isLoading)
+              PickRow(
+                activeType: _activeType,
+                onPickImage: _pickImage,
+                onPickVideo: _pickVideo,
+                onPickMedia: _pickMedia,
               ),
-            
-            // Media preview
-            _buildMediaPreview(),
-            
-            // File info
-            _buildFileInfo(),
-            
-            // Error message
-            _buildErrorMessage(),
-            
-            const SizedBox(height: 24),
-            
-            // Pick buttons
-            if (!_isLoading) ...[
-              BigButton(
-                text: 'Pick Image',
-                onTap: _pickImage,
-                color: Colors.green,
-              ),
-              const SizedBox(height: 12),
-              BigButton(
-                text: 'Pick Video',
-                onTap: _pickVideo,
-                color: Colors.orange,
-              ),
-              const SizedBox(height: 12),
-              BigButton(
-                text: 'Pick Any Media',
-                onTap: _pickMedia,
-                color: GlobalColors.mainColor,
-              ),
+            FileInfoCard(
+              selectedFilePath: _selectedFilePath,
+              fileType: _fileType,
+              fileSize: _fileSize,
+              videoDuration: _videoDuration,
+              mediaPickerService: _mediaPickerService,
+            ),
+            ErrorBanner(errorMessage: _errorMessage),
+            const SizedBox(height: 8),
+            if (_selectedFilePath != null && !_isLoading) ...[
+              ProceedButton(onPressed: _proceedWithFile),
+              const SizedBox(height: 40),
             ],
-            
-            const SizedBox(height: 24),
-            
-            // Upload and Analyze button (only shown when file is selected)
-            if (_selectedFilePath != null && !_isLoading)
-              BigButton(
-                text: 'Upload and Analyze',
-                onTap: _proceedWithFile,
-                color: Colors.deepPurpleAccent,
-              ),
           ],
         ),
       ),
