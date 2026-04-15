@@ -19,7 +19,16 @@ class AnalysisService:
         """Initialize AI model"""
         self.model_name = os.getenv('AI_MODEL_NAME', 'Organika/sdxl-detector')
         self.model = None
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.device = "cpu"
+        if torch.cuda.is_available():
+            try:
+                # Test if CUDA can actually execute operations (fixes 'engine not found' errors)
+                test_tensor = torch.zeros(1, 1, 3, 3).cuda()
+                test_conv = torch.nn.Conv2d(1, 1, 3).cuda()
+                test_conv(test_tensor)
+                self.device = "cuda"
+            except Exception as e:
+                logger.warning(f"CUDA operations failed (fallback to CPU). Error: {e}")
         
         # Load model
         self._load_model()
