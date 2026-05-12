@@ -7,7 +7,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
 from dotenv import load_dotenv
 
-from service.minio_service import MinIOService
 from service.analysis_service import AnalysisService
 from controller.upload_controller import UploadController
 from controller.authenticated_upload_controller import router
@@ -17,28 +16,22 @@ from service.database_service import db_service
 
 load_dotenv()
 
-minio_service = None
 analysis_service = None
 upload_controller = None
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global minio_service, analysis_service, upload_controller
+    global analysis_service, upload_controller
     
     logger.info("Starting AI Image Analysis Service...")
     
     try:
-        minio_service = MinIOService()
-        logger.info("MinIO service initialized")
-        
         analysis_service = AnalysisService()
         logger.info("Analysis service initialized")
         
-        upload_controller = UploadController(minio_service, analysis_service)
+        upload_controller = UploadController(analysis_service)
         logger.info("Upload controller initialized")
-        
-        asyncio.create_task(periodic_cleanup())
         
         logger.info("AI Image Analysis Service started successfully")
         
@@ -92,17 +85,15 @@ async def root():
 @app.get("/health", response_model=HealthResponse, tags=["Health"])
 async def health_check():
     try:
-        minio_connected = minio_service.check_connection() if minio_service else False
         model_loaded = analysis_service.is_model_loaded() if analysis_service else False
         
         return HealthResponse(
-            status="healthy" if (minio_connected and model_loaded) else "degraded",
-            minio_connected=minio_connected,
+            status="healthy" if model_loaded else "degraded",
             model_loaded=model_loaded
         )
     except Exception as e:
         logger.error(f"Health check failed: {e}")
-        return HealthResponse(status="unhealthy", minio_connected=False, model_loaded=False)
+        return HealthResponse(status="unhealthy", model_loaded=False)
 
 
 # =============================================================================
@@ -418,32 +409,15 @@ async def get_results(file_id: str):
 
 @app.delete("/cleanup", tags=["Maintenance"])
 async def trigger_cleanup():
-    """Manually trigger cleanup of expired files"""
+    """Manually trigger cleanup of temporary files"""
     try:
-        if minio_service:
-            ttl = int(os.getenv('FILE_TTL', 3600))
-            minio_service.cleanup_expired_files(ttl)
-            return {"message": "Cleanup completed successfully"}
-        else:
-            raise HTTPException(status_code=503, detail="MinIO service not available")
+        return {"message": "Temporary files are cleaned up immediately after processing; no manual cleanup required."}
     except Exception as e:
         logger.error(f"Cleanup failed: {e}")
         raise HTTPException(status_code=500, detail=f"Cleanup failed: {str(e)}")
 
 
-async def periodic_cleanup():
-    """Periodic cleanup task for expired files"""
-    while True:
-        try:
-            await asyncio.sleep(3600)
-            
-            if minio_service:
-                ttl = int(os.getenv('FILE_TTL', 3600))
-                minio_service.cleanup_expired_files(ttl)
-                logger.info("Periodic cleanup completed")
-                
-        except Exception as e:
-            logger.error(f"Periodic cleanup error: {e}")
+# Periodic cleanup is unnecessary because temporary files are removed immediately after processing.
 
 
 if __name__ == "__main__":

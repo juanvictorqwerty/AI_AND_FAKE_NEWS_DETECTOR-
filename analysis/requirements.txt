@@ -3,9 +3,6 @@ fastapi
 uvicorn[standard]
 python-multipart
 
-# MinIO client
-minio
-
 # AI/ML dependencies
 torch
 torchvision
@@ -26,9 +23,6 @@ httpx
 
 # Logging
 loguru
-
-# UUID generation
-uuid
 
 # JWT authentication
 PyJWT

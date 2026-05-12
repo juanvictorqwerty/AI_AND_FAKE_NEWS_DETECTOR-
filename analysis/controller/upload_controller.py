@@ -1,12 +1,13 @@
 import os
 import asyncio
 import time
+import uuid
+from pathlib import Path
 from typing import Dict, Any, List
 from fastapi import UploadFile, HTTPException, BackgroundTasks
 from loguru import logger
 from dotenv import load_dotenv
 
-from service.minio_service import MinIOService
 from service.analysis_service import AnalysisService
 from service.aggregation_service import AggregationService
 from models.schemas import UploadResponse, AnalysisResult, AnalysisStatus
@@ -17,15 +18,13 @@ load_dotenv()
 class UploadController:
     """Controller for handling file uploads and analysis"""
     
-    def __init__(self, minio_service: MinIOService, analysis_service: AnalysisService):
+    def __init__(self, analysis_service: AnalysisService):
         """
         Initialize upload controller
         
         Args:
-            minio_service: MinIO service instance
             analysis_service: Analysis service instance
         """
-        self.minio_service = minio_service
         self.analysis_service = analysis_service
         
         # Initialize aggregation service
@@ -69,14 +68,11 @@ class UploadController:
             # Get file extension
             file_extension = os.path.splitext(file.filename)[1].lower()
             
-            # Upload to MinIO
-            upload_result = self.minio_service.upload_file(file_content, file_extension)
-            file_id = upload_result['file_id']
-            object_name = upload_result['object_name']
+            temp_path = self._write_temp_file(file_content, file_extension)
+            file_id = str(uuid.uuid4())
             
-            logger.info(f"File uploaded: {file_id} ({file_size} bytes)")
+            logger.info(f"File saved to temp path: {temp_path} and queued for analysis: {file_id}")
             
-            # Initialize result as processing
             self.results_storage[file_id] = AnalysisResult(
                 file_id=file_id,
                 status=AnalysisStatus.PROCESSING
@@ -86,7 +82,7 @@ class UploadController:
             background_tasks.add_task(
                 self._process_file_background,
                 file_id=file_id,
-                object_name=object_name
+                file_path=temp_path
             )
             
             return UploadResponse(
@@ -131,12 +127,10 @@ class UploadController:
         # Get file extension
         file_extension = os.path.splitext(file.filename)[1].lower()
         
-        # Upload to MinIO
-        upload_result = self.minio_service.upload_file(file_content, file_extension)
-        file_id = upload_result['file_id']
-        object_name = upload_result['object_name']
+        temp_path = self._write_temp_file(file_content, file_extension)
+        file_id = str(uuid.uuid4())
         
-        logger.info(f"File uploaded: {file_id} ({file_size} bytes)")
+        logger.info(f"File saved to temp path: {temp_path} for analysis: {file_id}")
         
         # If background_tasks provided, process asynchronously
         if background_tasks:
@@ -150,7 +144,7 @@ class UploadController:
             background_tasks.add_task(
                 self._process_file_background,
                 file_id=file_id,
-                object_name=object_name
+                file_path=temp_path
             )
             
             return {
@@ -159,22 +153,21 @@ class UploadController:
                 'file_size': file_size
             }
         else:
-            # Process synchronously (for batch processing)
-            file_data = self.minio_service.download_file(object_name)
-            analysis_result = await self.analysis_service.analyze_image(file_data)
-            
-            # Schedule cleanup
-            asyncio.create_task(self._cleanup_file_after_delay(file_id, object_name))
-            
-            return {
-                'file_id': file_id,
-                'status': 'completed',
-                'filename': file.filename,
-                'label': analysis_result['label'],
-                'confidence': analysis_result['confidence'],
-                'probabilities': analysis_result['probabilities'],
-                'processing_time': analysis_result['processing_time']
-            }
+            try:
+                file_data = Path(temp_path).read_bytes()
+                analysis_result = await self.analysis_service.analyze_image(file_data)
+                
+                return {
+                    'file_id': file_id,
+                    'status': 'completed',
+                    'filename': file.filename,
+                    'label': analysis_result['label'],
+                    'confidence': analysis_result['confidence'],
+                    'probabilities': analysis_result['probabilities'],
+                    'processing_time': analysis_result['processing_time']
+                }
+            finally:
+                self._delete_temp_file(temp_path)
     
     async def upload_video_frames(
         self,
@@ -228,17 +221,13 @@ class UploadController:
                 # Get file extension
                 file_extension = os.path.splitext(file.filename)[1].lower()
                 
-                # Upload to MinIO
-                upload_result = self.minio_service.upload_file(file_content, file_extension)
-                file_id = upload_result['file_id']
-                object_name = upload_result['object_name']
-                
-                # Analyze image
-                file_data = self.minio_service.download_file(object_name)
-                analysis_result = await self.analysis_service.analyze_image(file_data)
-                
-                # Schedule cleanup
-                asyncio.create_task(self._cleanup_file_after_delay(file_id, object_name))
+                temp_path = self._write_temp_file(file_content, file_extension)
+                file_id = str(uuid.uuid4())
+                try:
+                    file_data = Path(temp_path).read_bytes()
+                    analysis_result = await self.analysis_service.analyze_image(file_data)
+                finally:
+                    self._delete_temp_file(temp_path)
                 
                 # Store frame result
                 frame_results.append({
@@ -338,19 +327,18 @@ class UploadController:
         
         logger.info(f"File validated: {file.filename} ({file_size} bytes)")
     
-    async def _process_file_background(self, file_id: str, object_name: str):
+    async def _process_file_background(self, file_id: str, file_path: str):
         """
         Process file in background
         
         Args:
             file_id: Unique file identifier
-            object_name: MinIO object name
+            file_path: Local temporary file path
         """
         try:
             logger.info(f"Starting background analysis for file: {file_id}")
             
-            # Download file from MinIO
-            file_data = self.minio_service.download_file(object_name)
+            file_data = Path(file_path).read_bytes()
             
             # Analyze image
             analysis_result = await self.analysis_service.analyze_image(file_data)
@@ -366,10 +354,6 @@ class UploadController:
             )
             
             logger.info(f"Analysis completed for file: {file_id}")
-            
-            # Schedule file cleanup
-            asyncio.create_task(self._cleanup_file_after_delay(file_id, object_name))
-            
         except Exception as e:
             logger.error(f"Error processing file {file_id}: {e}")
             
@@ -379,26 +363,26 @@ class UploadController:
                 status=AnalysisStatus.FAILED,
                 error=str(e)
             )
+        finally:
+            self._delete_temp_file(file_path)
     
-    async def _cleanup_file_after_delay(self, file_id: str, object_name: str):
-        """
-        Clean up file after TTL
-        
-        Args:
-            file_id: Unique file identifier
-            object_name: MinIO object name
-        """
+    
+    def _write_temp_file(self, file_content: bytes, file_extension: str) -> str:
+        """Write uploaded content to a unique temporary file in /tmp"""
+        temp_dir = Path("/tmp")
+        temp_dir.mkdir(parents=True, exist_ok=True)
+        temp_path = temp_dir / f"{uuid.uuid4()}{file_extension}"
+        temp_path.write_bytes(file_content)
+        return str(temp_path)
+
+    def _delete_temp_file(self, file_path: str):
+        """Delete a temporary file if it exists"""
         try:
-            # Wait for TTL
-            await asyncio.sleep(self.file_ttl)
-            
-            # Delete file from MinIO
-            self.minio_service.delete_file(object_name)
-            logger.info(f"File cleaned up after TTL: {file_id}")
-            
+            Path(file_path).unlink(missing_ok=True)
+            logger.info(f"Deleted temporary file: {file_path}")
         except Exception as e:
-            logger.error(f"Error cleaning up file {file_id}: {e}")
-    
+            logger.warning(f"Failed to delete temporary file {file_path}: {e}")
+
     async def get_result(self, file_id: str) -> AnalysisResult:
         """
         Get analysis result for file
