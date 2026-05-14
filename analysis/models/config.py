@@ -1,6 +1,7 @@
 import os
 import json
 from typing import List
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
@@ -10,6 +11,9 @@ class Settings(BaseSettings):
     app_port: int = 8000
     app_debug: bool = True
     max_image_size_mb: int = 20
+
+    # Base de données
+    database_url: str = Field(..., validation_alias="DATABASE_URL")
 
     # AI Model Configuration
     ai_model_name: str = "Organika/sdxl-detector"
