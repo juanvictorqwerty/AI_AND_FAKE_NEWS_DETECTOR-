@@ -9,9 +9,7 @@ import asyncio
 from typing import Optional, Tuple
 from PIL import Image
 from loguru import logger
-from dotenv import load_dotenv
-
-load_dotenv()
+from models.config import settings
 
 
 class URLProcessingError(Exception):
@@ -41,7 +39,7 @@ class URLProcessingService:
         self.timeout = httpx.Timeout(30.0, read=60.0)  # Longer timeout for downloads
         self.max_redirects = 5
         self.user_agent = "Mozilla/5.0 (compatible; AI Media Analyzer/1.0)"
-        self.max_image_size = int(os.getenv('MAX_IMAGE_SIZE_MB', '20')) * 1024 * 1024  # Default 20MB
+        self.max_image_size = settings.max_image_size_mb * 1024 * 1024
         self.allowed_mime_types = {'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/bmp'}
 
     async def download_image(self, image_url: str) -> Tuple[bytes, str]:

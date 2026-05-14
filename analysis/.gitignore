@@ -37,15 +37,19 @@ logs/
 
 # Environment variables
 .env
+.env.development
+.env.production
 .env.local
 .env.*.local
+!.env.example
 
 # MinIO data (if running locally)
 minio-data/
 
 # Model cache
 .cache/
-models/
+# models/  <-- Commented out to allow code in models/ directory
+
 
 # OS
 .DS_Store

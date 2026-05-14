@@ -10,7 +10,7 @@ transformers
 Pillow
 
 # Environment and configuration
-python-dotenv
+pydantic-settings
 
 # Async support
 aiofiles
