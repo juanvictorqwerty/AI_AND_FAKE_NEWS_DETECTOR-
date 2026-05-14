@@ -2,7 +2,6 @@ package com.example.ai_fake_news_detector
 
 import android.content.Context
 import android.content.SharedPreferences
-import com.getkeepsafe.relinker.BuildConfig
 
 /**
  * ConfigManager - Manages configuration settings for the native notification system Reads base URL
