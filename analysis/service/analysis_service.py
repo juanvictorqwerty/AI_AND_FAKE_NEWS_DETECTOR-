@@ -6,18 +6,14 @@ from PIL import Image
 import torch
 from transformers import pipeline
 from loguru import logger
-import os
-from dotenv import load_dotenv
-
-# Load environment variables
-load_dotenv()
+from models.config import settings
 
 class AnalysisService:
     """Service for AI image analysis"""
     
     def __init__(self):
         """Initialize AI model"""
-        self.model_name = os.getenv('AI_MODEL_NAME', 'Organika/sdxl-detector')
+        self.model_name = settings.ai_model_name
         self.model = None
         self.device = "cpu"
         if torch.cuda.is_available():

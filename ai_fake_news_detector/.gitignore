@@ -48,3 +48,5 @@ app.*.map.json
 /android/app/release
 
 android/app/src/main/kotlin/com/example/ai_fake_news_detector/.env
+env*.json
+!env.example.json

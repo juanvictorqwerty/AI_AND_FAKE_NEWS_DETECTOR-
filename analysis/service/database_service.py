@@ -12,16 +12,14 @@ from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy import select, and_, text
 from loguru import logger
-from dotenv import load_dotenv
-
-load_dotenv()
+from models.config import settings
 
 
 class DatabaseService:
     """Service for database operations"""
 
     def __init__(self):
-        self.database_url = os.getenv('DATABASE_URL', 'postgresql://admin:admin123@localhost:5432/mydb')
+        self.database_url = settings.database_url
 
         if self.database_url.startswith('postgresql://'):
             self.database_url = self.database_url.replace('postgresql://', 'postgresql+asyncpg://', 1)

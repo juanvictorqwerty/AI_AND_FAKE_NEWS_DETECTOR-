@@ -5,6 +5,24 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+import java.util.Base64
+
+val dartEnvironmentVariables = mutableMapOf<String, String>()
+if (project.hasProperty("dart-defines")) {
+    val dartDefines = project.property("dart-defines") as String
+    dartDefines.split(",").forEach {
+        try {
+            val decoded = String(Base64.getDecoder().decode(it))
+            val split = decoded.split("=")
+            if (split.size == 2) {
+                dartEnvironmentVariables[split[0]] = split[1]
+            }
+        } catch (e: IllegalArgumentException) {
+            // Ignore malformed base64
+        }
+    }
+}
+
 android {
     namespace = "com.example.ai_fake_news_detector"
     compileSdk = flutter.compileSdkVersion
@@ -19,6 +37,10 @@ android {
         jvmTarget = JavaVersion.VERSION_17.toString()
     }
 
+    buildFeatures {
+        buildConfig = true
+    }
+
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.example.ai_fake_news_detector"
@@ -28,6 +50,10 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        
+        buildConfigField("String", "FACT_CHECK_URL", "\"${dartEnvironmentVariables["NATIVE_FACT_CHECK_URL"] ?: "http://192.168.1.152:4000"}\"")
+        buildConfigField("String", "MEDIA_UPLOAD_URL", "\"${dartEnvironmentVariables["NATIVE_MEDIA_UPLOAD_URL"] ?: "http://192.168.1.152:8000"}\"")
+        manifestPlaceholders["customScheme"] = dartEnvironmentVariables["CUSTOM_SCHEME"] ?: "afnd"
     }
 
     buildTypes {

@@ -6,14 +6,10 @@ from pathlib import Path
 from typing import Dict, Any, List
 from fastapi import UploadFile, HTTPException, BackgroundTasks
 from loguru import logger
-from dotenv import load_dotenv
-
+from models.config import settings
 from service.analysis_service import AnalysisService
 from service.aggregation_service import AggregationService
 from models.schemas import UploadResponse, AnalysisResult, AnalysisStatus
-
-# Load environment variables
-load_dotenv()
 
 class UploadController:
     """Controller for handling file uploads and analysis"""
@@ -28,8 +24,7 @@ class UploadController:
         self.analysis_service = analysis_service
         
         # Initialize aggregation service
-        confidence_threshold = float(os.getenv('AGGREGATION_CONFIDENCE_THRESHOLD', 0.5))
-        self.aggregation_service = AggregationService(confidence_threshold)
+        self.aggregation_service = AggregationService(settings.aggregation_confidence_threshold)
         
         # In-memory storage for analysis results
         # In production, use Redis or database
@@ -41,8 +36,8 @@ class UploadController:
         self.allowed_mime_types = {'image/jpeg', 'image/png', 'image/jpg', 'image/webp', 'image/bmp'}
         
         # TTL configuration
-        self.file_ttl = int(os.getenv('FILE_TTL', 3600))  # 1 hour
-        self.result_ttl = int(os.getenv('RESULT_TTL', 3600))  # 1 hour
+        self.file_ttl = settings.file_ttl
+        self.result_ttl = settings.result_ttl
         
         logger.info("Upload controller initialized")
     

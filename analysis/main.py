@@ -5,16 +5,13 @@ from typing import List, Dict, Any, Optional
 from fastapi import FastAPI, UploadFile, File, HTTPException, BackgroundTasks, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
-from dotenv import load_dotenv
-
+from models.config import settings
 from service.analysis_service import AnalysisService
 from controller.upload_controller import UploadController
 from controller.authenticated_upload_controller import router
 from middleware.auth_middleware import validate_jwt_token
 from models.schemas import UploadResponse, AnalysisResult, HealthResponse, VideoUploadResponse, AnalysisStatus
 from service.database_service import db_service
-
-load_dotenv()
 
 analysis_service = None
 upload_controller = None
@@ -53,16 +50,9 @@ app = FastAPI(
 )
 
 # Configure CORS
-cors_origins = os.getenv('CORS_ORIGINS', '["http://localhost:3000", "http://localhost:8080", "http://localhost:5000"]')
-import json
-try:
-    origins = json.loads(cors_origins)
-except:
-    origins = ["http://localhost:3000", "http://localhost:8080", "http://localhost:5000"]
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=settings.cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -423,10 +413,6 @@ async def trigger_cleanup():
 if __name__ == "__main__":
     import uvicorn
     
-    host = os.getenv('APP_HOST', '0.0.0.0')
-    port = int(os.getenv('APP_PORT', 8000))
-    debug = os.getenv('APP_DEBUG', 'True').lower() == 'true'
+    logger.info(f"Starting server on {settings.app_host}:{settings.app_port}")
     
-    logger.info(f"Starting server on {host}:{port}")
-    
-    uvicorn.run("main:app", host=host, port=port, reload=debug, log_level="info")
+    uvicorn.run("main:app", host=settings.app_host, port=settings.app_port, reload=settings.app_debug, log_level="info")

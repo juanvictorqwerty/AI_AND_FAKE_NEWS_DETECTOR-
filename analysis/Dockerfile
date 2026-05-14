@@ -6,7 +6,7 @@
 
 # Want to help us make this template better? Share your feedback here: https://forms.gle/ybq9Krt8jtBL3iCk7
 
-ARG PYTHON_VERSION=3.12.3
+ARG PYTHON_VERSION=3.12.13
 FROM python:${PYTHON_VERSION}-slim as base
 
 # Prevents Python from writing pyc files.
@@ -48,4 +48,4 @@ COPY . .
 EXPOSE 7860
 
 # Run the application.
-CMD uvicorn 'main:app' --host=0.0.0.0 --port=7860
+CMD APP_ENV=production gunicorn main:app -w 4 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:7860 --log-level info
