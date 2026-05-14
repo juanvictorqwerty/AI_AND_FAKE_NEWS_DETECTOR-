@@ -2,11 +2,11 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:ai_fake_news_detector/config/env_config.dart';
 import 'package:ai_fake_news_detector/models/fact_check_result.dart';
 
 class FactCheckService extends GetxService {
-  String get baseUrl => dotenv.env['BASE_URL_NODE'] ?? 'http://192.168.1.152:4000';
+  String get baseUrl => EnvConfig.baseUrlNode;
 
   /// Search for fact-check results for a given claim
   /// 

@@ -13,13 +13,12 @@ import 'package:ai_fake_news_detector/services/media_analysis_channel.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get_navigation/src/root/get_material_app.dart';
 import 'package:get/get.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Load environment variables
-  await dotenv.load(fileName: "assets/.env");
+
 
   // Initialize services
   Get.put(AuthService());
