@@ -1,25 +1,18 @@
-name: Sync to Hugging Face Hub
+- name: Push Analysis Sub-folder to Hugging Face
+  env:
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}
+  run: |
+      cd analysis
 
-on:
-    push:
-        branches: [main] # Triggers the workflow whenever you push to your main branch
+      # Initialize git repo
+      git init -b main
+      git config user.name "github-actions"
+      git config user.email "github-actions@github.com"
 
-    # Allows you to manually trigger this workflow from the GitHub Actions tab
-    workflow_dispatch:
+      # Stage and commit
+      git add .
+      git commit -m "deploy: sync fastapi app to hugging face"
 
-jobs:
-    sync-to-hub:
-        runs-on: ubuntu-latest
-        steps:
-            - name: Checkout Code
-              uses: actions/checkout@v4
-              with:
-                  fetch-depth: 0
-                  lfs: true
-
-            - name: Push to Hugging Face Spaces
-              uses: huggingface/hub-sync@v0.1.0
-              with:
-                  github_repo_id: ${{ github.repository }}
-                  huggingface_repo_id: juanvic/AI_Image
-                  hf_token: ${{ secrets.HF_TOKEN }}
+      # Push to HF Spaces
+      git remote add space https://juanvictorqwerty:${HF_TOKEN}@huggingface.co/spaces/juanvictorqwerty/AI_Image
+      git push --force space main
