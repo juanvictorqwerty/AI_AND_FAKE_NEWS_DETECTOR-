@@ -158,7 +158,7 @@ MINIO_SECURE=False
 MINIO_BUCKET_NAME=ai-analysis
 
 # AI Model Configuration
-AI_MODEL_NAME=Ateeqq/ai-vs-human-image-detector
+AI_MODEL_NAME=dima806/ai_vs_real_image_detection
 
 # Application Configuration
 APP_HOST=0.0.0.0
@@ -212,7 +212,7 @@ Open browser to: http://localhost:8000/docs
 | `MINIO_SECRET_KEY` | `minioadmin` | MinIO secret key |
 | `MINIO_SECURE` | `False` | Use HTTPS for MinIO |
 | `MINIO_BUCKET_NAME` | `ai-analysis` | MinIO bucket name |
-| `AI_MODEL_NAME` | `Ateeqq/ai-vs-human-image-detector` | HuggingFace model name |
+| `AI_MODEL_NAME` | `dima806/ai_vs_real_image_detection` | HuggingFace model name |
 | `APP_HOST` | `0.0.0.0` | Application host |
 | `APP_PORT` | `8000` | Application port |
 | `APP_DEBUG` | `True` | Enable debug mode |
@@ -228,7 +228,7 @@ Open browser to: http://localhost:8000/docs
 - **MIME Types**: image/jpeg, image/png, image/jpg
 
 ### AI Analysis
-- **Model**: Ateeqq/ai-vs-human-image-detector
+- **Model**: dima806/ai_vs_real_image_detection
 - **Output**: Label (AI/Human), Confidence score, Probabilities
 - **Processing**: Asynchronous background task
 

@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     database_url: str = Field(..., validation_alias="DATABASE_URL")
 
     # AI Model Configuration
-    ai_model_name: str = "Organika/sdxl-detector"
+    ai_model_name: str = "Ateeqq/ai-vs-human-image-detector"
     
     # TTL Configuration (in seconds)
     file_ttl: int = 3600
