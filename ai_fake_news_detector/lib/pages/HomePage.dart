@@ -1,12 +1,11 @@
-import 'package:ai_fake_news_detector/pages/FactCheckPage.dart';
-import 'package:ai_fake_news_detector/pages/MediaPickerPage.dart';
-import 'package:ai_fake_news_detector/pages/SettingsPage.dart';
 import 'package:ai_fake_news_detector/services/auth_controller.dart';
-import 'package:ai_fake_news_detector/utils/global.colors.dart';
-import 'package:ai_fake_news_detector/widgets/big_button.global.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+
+import 'package:ai_fake_news_detector/widgets/home_page/home_app_bar.dart';
+import 'package:ai_fake_news_detector/widgets/home_page/home_header.dart';
+import 'package:ai_fake_news_detector/widgets/home_page/feature_cards.dart';
 
 class Homepage extends StatefulWidget {
   const Homepage({super.key});
@@ -15,11 +14,46 @@ class Homepage extends StatefulWidget {
   State<Homepage> createState() => _HomepageState();
 }
 
-class _HomepageState extends State<Homepage> {
+class _HomepageState extends State<Homepage> with TickerProviderStateMixin {
+  late AnimationController _fadeController;
+  late AnimationController _scaleController;
+  late List<AnimationController> _buttonControllers;
+
   @override
   void initState() {
     super.initState();
+    _initializeAnimations();
     _prolongToken();
+  }
+
+  void _initializeAnimations() {
+    _fadeController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    )..forward();
+
+    _scaleController = AnimationController(
+      duration: const Duration(milliseconds: 600),
+      vsync: this,
+    )..forward();
+
+    _buttonControllers = List.generate(
+      3,
+      (index) => AnimationController(
+        duration: const Duration(milliseconds: 600),
+        vsync: this,
+      ),
+    );
+
+    Future.delayed(const Duration(milliseconds: 200), () {
+      for (int i = 0; i < _buttonControllers.length; i++) {
+        Future.delayed(Duration(milliseconds: i * 150), () {
+          if (mounted) {
+            _buttonControllers[i].forward();
+          }
+        });
+      }
+    });
   }
 
   Future<void> _prolongToken() async {
@@ -33,78 +67,44 @@ class _HomepageState extends State<Homepage> {
   }
 
   @override
+  void dispose() {
+    _fadeController.dispose();
+    _scaleController.dispose();
+    for (var controller in _buttonControllers) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
-        backgroundColor: GlobalColors.mainColor,
-        title: Text(
-          "AI & FAKE NEWS DETECTOR",
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            height: 50,
-          ),
-        ),
-        actions: <Widget>[
-          IconButton(
-            icon: Icon(Icons.history, color: Colors.white),
-            onPressed: () {
-              Navigator.pushNamed(context, '/history');
-            },
-            tooltip: 'History',
-          ),
-          IconButton(
-            icon: Icon(Icons.settings, color: Colors.white),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const SettingsPage()),
-              );
-            },
-            tooltip: 'Settings',
-          ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        child: SafeArea(
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(15.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                const SizedBox(height: 20),
-                BigButton(
-                  text: "Fact Check",
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const FactCheckPage(),
-                      ),
-                    );
-                  },
-                  color: Colors.green,
-                ),
-
-                const SizedBox(height: 20),
-
-                BigButton(
-                  text: "Upload Media",
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const MediaPickerPage(),
-                      ),
-                    );
-                  },
-                  color: Colors.deepPurpleAccent,
-                ),
-              ],
+      backgroundColor: isDark
+          ? const Color(0xFF0F1419)
+          : const Color(0xFFFAFAFA),
+      appBar: HomeAppBar(isDark: isDark, scaleController: _scaleController),
+      body: FadeTransition(
+        opacity: Tween<double>(begin: 0.0, end: 1.0).animate(_fadeController),
+        child: SingleChildScrollView(
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 20.0,
+                vertical: 24.0,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  HomeHeader(isDark: isDark),
+                  const SizedBox(height: 40),
+                  FeatureCards(
+                    isDark: isDark,
+                    buttonControllers: _buttonControllers,
+                  ),
+                ],
+              ),
             ),
           ),
         ),
