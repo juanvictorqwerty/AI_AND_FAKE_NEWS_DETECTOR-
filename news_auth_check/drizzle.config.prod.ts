@@ -11,7 +11,7 @@ if (!process.env.DATABASE_URL) {
     throw new Error('DATABASE_URL is not defined in .env.production');
 }
 
-console.log('✅ Production DB URL:', process.env.DATABASE_URL?.slice(0, 20) + '...');
+console.log('✅ Production DB URL:', process.env.DATABASE_URL);
 
 // Export default directly to avoid variable shadowing/naming conflicts
 export default defineConfig({
