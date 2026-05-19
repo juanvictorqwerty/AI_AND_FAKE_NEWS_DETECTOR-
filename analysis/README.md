@@ -1,3 +1,13 @@
+---
+title: AI and Fake News Detector
+emoji: 🕵️‍♂️
+colorFrom: blue
+colorTo: red
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # AI Image Analysis Backend Service
 
 FastAPI backend service for AI-powered image analysis with MinIO storage integration.
