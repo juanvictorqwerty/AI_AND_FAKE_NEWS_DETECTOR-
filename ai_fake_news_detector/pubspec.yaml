@@ -45,6 +45,7 @@ dependencies:
   image_picker: ^1.0.7 # For picking images and videos from gallery
   video_player: ^2.8.2 # For video playback and duration extraction
   path_provider: ^2.1.2 # For file path handling
+  video_thumbnail: ^0.5.6
 
 dev_dependencies:
   flutter_test:
@@ -68,7 +69,8 @@ flutter:
   uses-material-design: true
 
   # To add assets to your application, add an assets section, like this:
-  #assets:
+  assets:
+    - assets/logo.png
   #   - images/a_dot_burr.jpeg
   #   - images/a_dot_ham.jpeg
 

@@ -27,12 +27,12 @@ class _LoginState extends State<Login> {
         automaticallyImplyLeading: false,
         backgroundColor: GlobalColors.mainColor,
         title: Text(
-          "AI & FAKE NEWS DETECTOR",
+          "AFND",
           style: TextStyle(
             color: Colors.white,
             fontSize: 20,
             fontWeight: FontWeight.bold,
-            height: 50
+            height: 50,
           ),
         ),
       ),
@@ -42,9 +42,26 @@ class _LoginState extends State<Login> {
             width: double.infinity,
             padding: const EdgeInsets.all(15.0),
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center, // vertically centered
+              mainAxisAlignment:
+                  MainAxisAlignment.center, // vertically centered
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Center(
+                  child: Container(
+                    padding: const EdgeInsets.all(15),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[200],
+                      shape: BoxShape.circle,
+                    ),
+                    child: Image.asset(
+                      'assets/logo.png',
+                      height: 100,
+                      width: 100,
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 15),
                 Text(
                   "Connection",
                   style: TextStyle(
@@ -81,36 +98,38 @@ class _LoginState extends State<Login> {
                       text: 'Login',
                       color: GlobalColors.mainColor,
                       isLoading: _isLoading,
-                      onTap: _isLoading ? null : () async {
-                        // Validate inputs
-                        if (emailController.text.isEmpty || 
-                            passwordController.text.isEmpty) {
-                          Get.snackbar('Error', 'Please fill in all fields');
-                          return;
-                        }
+                      onTap: _isLoading
+                          ? null
+                          : () async {
+                              // Validate inputs
+                              if (emailController.text.isEmpty ||
+                                  passwordController.text.isEmpty) {
+                                Get.snackbar(
+                                  'Error',
+                                  'Please fill in all fields',
+                                );
+                                return;
+                              }
 
-                        setState(() => _isLoading = true);
+                              setState(() => _isLoading = true);
 
-                        // Call login API
-                        final authController = Get.find<AuthController>();
-                        final success = await authController.signIn(
-                          email: emailController.text,
-                          password: passwordController.text,
-                        );
+                              // Call login API
+                              final authController = Get.find<AuthController>();
+                              final success = await authController.signIn(
+                                email: emailController.text,
+                                password: passwordController.text,
+                              );
 
-                        if (success) {
-                          Get.offAll(() => Homepage());
-                        }
-                        if (mounted) setState(() => _isLoading = false);
-                      },
+                              if (success) {
+                                Get.offAll(() => Homepage());
+                              }
+                              if (mounted) setState(() => _isLoading = false);
+                            },
                     ),
 
                     const SizedBox(height: 10),
                     const Center(
-                      child: Text(
-                        "Or",
-                        style: TextStyle(fontSize: 16),
-                      ),
+                      child: Text("Or", style: TextStyle(fontSize: 16)),
                     ),
 
                     const SizedBox(height: 20),
@@ -118,22 +137,27 @@ class _LoginState extends State<Login> {
                       text: "Connect anonymously",
                       color: Colors.black,
                       isLoading: _isLoading,
-                      onTap: _isLoading ? null : () async {
-                        debugPrint('Anonymous button tapped');
-                        setState(() => _isLoading = true);
-                        debugPrint('Loading set to true');
+                      onTap: _isLoading
+                          ? null
+                          : () async {
+                              debugPrint('Anonymous button tapped');
+                              setState(() => _isLoading = true);
+                              debugPrint('Loading set to true');
 
-                        // Call anonymous signup API
-                        final authController = Get.find<AuthController>();
-                        debugPrint('Got auth controller, calling anonymousSignUp');
-                        final success = await authController.anonymousSignUp();
-                        debugPrint('anonymousSignUp returned: $success');
+                              // Call anonymous signup API
+                              final authController = Get.find<AuthController>();
+                              debugPrint(
+                                'Got auth controller, calling anonymousSignUp',
+                              );
+                              final success = await authController
+                                  .anonymousSignUp();
+                              debugPrint('anonymousSignUp returned: $success');
 
-                        if (success) {
-                          Get.offAll(() => Homepage());
-                        }
-                        if (mounted) setState(() => _isLoading = false);
-                      },
+                              if (success) {
+                                Get.offAll(() => Homepage());
+                              }
+                              if (mounted) setState(() => _isLoading = false);
+                            },
                     ),
                   ],
                 ),
@@ -157,12 +181,10 @@ class _LoginState extends State<Login> {
               ),
             ),
             InkWell(
-              onTap: (){
+              onTap: () {
                 Navigator.push(
-                  context, 
-                  MaterialPageRoute(
-                    builder:(context)=>SignUp()
-                    ),
+                  context,
+                  MaterialPageRoute(builder: (context) => SignUp()),
                 );
               },
               child: Text(
