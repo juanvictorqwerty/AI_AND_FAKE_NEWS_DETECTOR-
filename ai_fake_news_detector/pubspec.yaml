@@ -45,7 +45,8 @@ dependencies:
   image_picker: ^1.0.7 # For picking images and videos from gallery
   video_player: ^2.8.2 # For video playback and duration extraction
   path_provider: ^2.1.2 # For file path handling
-  video_thumbnail: ^0.5.6
+  get_thumbnail_video: ^0.7.3 # For efficient video thumbnail generation
+  dio: ^5.4.0 # For downloading remote images
 
 dev_dependencies:
   flutter_test:

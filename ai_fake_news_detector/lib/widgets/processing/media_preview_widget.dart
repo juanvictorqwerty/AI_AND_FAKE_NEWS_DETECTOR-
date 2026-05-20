@@ -1,8 +1,9 @@
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:get_thumbnail_video/index.dart';
+import 'package:get_thumbnail_video/video_thumbnail.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:video_thumbnail/video_thumbnail.dart';
 import 'package:video_player/video_player.dart';
 import 'package:ai_fake_news_detector/services/media_cache.dart';
 
@@ -99,7 +100,8 @@ class _MediaPreviewWidgetState extends State<MediaPreviewWidget> {
         );
       }
     } else if (MediaCache.type == 'video') {
-      if (widget.videoController != null && widget.videoController!.value.isInitialized) {
+      if (widget.videoController != null &&
+          widget.videoController!.value.isInitialized) {
         content = Stack(
           alignment: Alignment.center,
           children: [
@@ -135,12 +137,18 @@ class _MediaPreviewWidgetState extends State<MediaPreviewWidget> {
                 shape: BoxShape.circle,
               ),
               padding: const EdgeInsets.all(12),
-              child: const Icon(Icons.play_arrow, color: Colors.white, size: 36),
+              child: const Icon(
+                Icons.play_arrow,
+                color: Colors.white,
+                size: 36,
+              ),
             ),
           ],
         );
       } else {
-        content = const Center(child: Icon(Icons.videocam, size: 48, color: Colors.grey));
+        content = const Center(
+          child: Icon(Icons.videocam, size: 48, color: Colors.grey),
+        );
       }
     } else if (MediaCache.type == 'text') {
       if (_loading) {
@@ -161,7 +169,9 @@ class _MediaPreviewWidgetState extends State<MediaPreviewWidget> {
         );
       }
     } else {
-      content = const Center(child: Icon(Icons.insert_drive_file, size: 48, color: Colors.grey));
+      content = const Center(
+        child: Icon(Icons.insert_drive_file, size: 48, color: Colors.grey),
+      );
     }
 
     return ClipRRect(
@@ -176,10 +186,7 @@ class _MediaPreviewWidgetState extends State<MediaPreviewWidget> {
         ),
         child: Hero(
           tag: 'media_preview',
-          child: Material(
-            color: Colors.transparent,
-            child: content,
-          ),
+          child: Material(color: Colors.transparent, child: content),
         ),
       ),
     );

@@ -152,6 +152,7 @@ class MediaAnalysisService : Service() {
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
+        NotificationMediaHelper.init(this)
         Log.d(TAG, "MediaAnalysisService created")
     }
 
@@ -309,12 +310,21 @@ class MediaAnalysisService : Service() {
         }
     }
 
-    private fun createNotification(message: String, progress: Int, filePath: String? = null, fileType: String? = null, isComplete: Boolean = false): Notification {
+    private fun createNotification(
+        message: String,
+        progress: Int,
+        filePath: String? = null,
+        fileType: String? = null,
+        isComplete: Boolean = false
+    ): Notification {
         val intent = packageManager.getLaunchIntentForPackage(packageName)
         val pendingIntent = PendingIntent.getActivity(
-            this, 0, intent,
+            this,
+            0,
+            intent,
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
+        
         val builder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(if (isComplete) "Analysis Complete" else "Media Analysis")
             .setContentText(message)
@@ -324,29 +334,48 @@ class MediaAnalysisService : Service() {
             .setOngoing(!isComplete)
             .setAutoCancel(isComplete)
 
-        if (isComplete && filePath != null) {
-            try {
-                if (fileType == "image") {
-                    val bitmap = getScaledBitmap(filePath)
-                    if (bitmap != null) {
-                        builder.setStyle(NotificationCompat.BigPictureStyle()
-                            .bigPicture(bitmap)
-                            .bigLargeIcon(null as android.graphics.Bitmap?))
-                    }
-                } else if (fileType == "video") {
-                    val bitmap = android.media.ThumbnailUtils.createVideoThumbnail(filePath, android.provider.MediaStore.Images.Thumbnails.MINI_KIND)
-                    if (bitmap != null) {
-                        builder.setStyle(NotificationCompat.BigPictureStyle()
-                            .bigPicture(bitmap)
-                            .bigLargeIcon(null as android.graphics.Bitmap?))
-                    }
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Error generating thumbnail for notification: ${e.message}")
-            }
+        // Apply BigPictureStyle when analysis is complete and media is available
+        if (isComplete && filePath != null && fileType != null) {
+            applyMediaStyleAsync(builder, filePath, fileType)
         }
 
         return builder.build()
+    }
+
+    /**
+     * Apply BigPictureStyle based on media type
+     * Uses NotificationMediaHelper for proper handling
+     */
+    private fun applyMediaStyleAsync(
+        builder: NotificationCompat.Builder,
+        filePath: String,
+        fileType: String
+    ) {
+        try {
+            when (fileType) {
+                "image" -> {
+                    val success = NotificationMediaHelper.applyBigPictureStyle(builder, filePath)
+                    if (success) {
+                        Log.d(TAG, "BigPictureStyle applied for image")
+                    } else {
+                        Log.w(TAG, "Failed to apply BigPictureStyle for image")
+                    }
+                }
+                "video" -> {
+                    val success = NotificationMediaHelper.applyVideoThumbnailStyle(builder, filePath)
+                    if (success) {
+                        Log.d(TAG, "BigPictureStyle applied for video")
+                    } else {
+                        Log.w(TAG, "Failed to apply BigPictureStyle for video")
+                    }
+                }
+                else -> {
+                    Log.w(TAG, "Unknown media type for BigPictureStyle: $fileType")
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error applying BigPictureStyle: ${e.message}")
+        }
     }
 
     private fun updateNotification(message: String, progress: Int, filePath: String? = null, fileType: String? = null, isComplete: Boolean = false) {
