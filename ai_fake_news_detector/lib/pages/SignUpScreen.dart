@@ -109,7 +109,7 @@ class _SignUpState extends State<SignUp> {
                   controller: confirmPasswordController,
                   text: 'Confirm password',
                   textInputType: TextInputType.text,
-                  obscure: false,
+                  obscure: true,
                 ),
 
                 const SizedBox(height: 10),
