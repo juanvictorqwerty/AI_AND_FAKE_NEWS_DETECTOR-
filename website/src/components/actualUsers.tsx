@@ -9,7 +9,7 @@ export default async function ActualUsers() {
         <div className="bg-linear-to-r from-blue-600 to-indigo-600 text-white rounded-2xl px-10 py-8 shadow-lg text-center">
             
             <p className="text-sm uppercase tracking-widest opacity-80">
-            Trusted by
+            All ready used by
             </p>
 
             <h2 className="text-5xl font-bold mt-2">
@@ -17,7 +17,7 @@ export default async function ActualUsers() {
             </h2>
 
             <p className="mt-2 text-lg opacity-90">
-            users worldwide 🌍
+            users 🌍
             </p>
         </div>
         </section>

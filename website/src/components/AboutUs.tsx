@@ -52,7 +52,6 @@ import { Mail, Users, Lightbulb, GitBranch } from "lucide-react";
                 online.
             </p>
             </div>
-
             {/* Contact */}
             <div className="p-6 rounded-2xl bg-gray-50 dark:bg-gray-800 shadow-md">
             <div className="flex items-center gap-3 mb-4">
@@ -64,8 +63,9 @@ import { Mail, Users, Lightbulb, GitBranch } from "lucide-react";
 
             <button
                 onClick={() => {
-                    const email = atob("anVhbnZpY3RvcnF3ZXJ0eUBnbWFpbC5jb20=");
-                    window.location.href = `mailto:${email}`;
+                const email = atob("anVhbnZpY3RvcnF3ZXJ0eUBnbWFpbC5jb20=");
+                // Opens a new tab directly into Gmail's compose window
+                window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${email}`, "_blank");
                 }}
                 className="px-6 py-2 bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 text-white font-semibold rounded-lg transition flex items-center gap-2"
             >

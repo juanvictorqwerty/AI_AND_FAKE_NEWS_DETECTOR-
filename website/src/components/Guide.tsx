@@ -158,7 +158,7 @@ export default function Guide() {
             </p>
 
             <a
-            href="/download"
+            href="https://drive.google.com/file/d/14pHOdg-kEApiWj7GeiGJ_zG9ebiTE_kq/view?usp=drive_link"
             className="inline-block rounded-full bg-blue-600 px-8 py-3 text-white font-medium shadow-md hover:bg-blue-700 transition"
             >
             Get Started

@@ -25,7 +25,7 @@ export default function Hero() {
             </a>
 
             <a
-            href="/download"
+            href="https://drive.google.com/file/d/14pHOdg-kEApiWj7GeiGJ_zG9ebiTE_kq/view?usp=drive_link"
             className="rounded-full bg-green-600 px-8 py-3 text-white font-medium shadow-md hover:bg-green-700 transition"
             >
             Download App
