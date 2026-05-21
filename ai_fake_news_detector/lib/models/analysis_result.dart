@@ -32,10 +32,17 @@ class AnalysisResult {
       });
     }
 
+    String parsedLabel = json['label']?.toString() ?? 'Unknown';
+    if (parsedLabel.toLowerCase() == 'hum') {
+      parsedLabel = 'Human';
+    } else if (parsedLabel.toLowerCase() == 'ai') {
+      parsedLabel = 'AI';
+    }
+
     return AnalysisResult(
       fileId: json['file_id'] ?? '',
       status: json['status'] ?? 'processing',
-      label: json['label'] ?? 'Unknown',
+      label: parsedLabel,
       confidence: (json['confidence'] as num?)?.toDouble() ?? 0.0,
       probabilities: parsedProbabilities,
       error: json['error'],
@@ -60,7 +67,7 @@ class AnalysisResult {
   bool get isAi => label.toLowerCase() == 'ai' || label.toLowerCase() == 'artificial';
 
   /// Check if result indicates human-generated content
-  bool get isHuman => label.toLowerCase() == 'human';
+  bool get isHuman => label.toLowerCase() == 'human' || label.toLowerCase() == 'hum';
 
   /// Check if there was an error
   bool get hasError => error != null && error!.isNotEmpty;
@@ -85,7 +92,7 @@ class AnalysisResult {
 
   /// Get Human probability as percentage string
   String get humanProbabilityPercentage {
-    final humanProb = probabilities['human'] ?? 0.0;
+    final humanProb = probabilities['human'] ?? probabilities['hum'] ?? 0.0;
     return '${(humanProb * 100).toStringAsFixed(1)}%';
   }
 
@@ -93,7 +100,7 @@ class AnalysisResult {
   double get aiProbability => probabilities['ai'] ?? probabilities['artificial'] ?? 0.0;
 
   /// Get Human probability value (0.0 to 1.0)
-  double get humanProbability => probabilities['human'] ?? 0.0;
+  double get humanProbability => probabilities['human'] ?? probabilities['hum'] ?? 0.0;
 
   @override
   String toString() {

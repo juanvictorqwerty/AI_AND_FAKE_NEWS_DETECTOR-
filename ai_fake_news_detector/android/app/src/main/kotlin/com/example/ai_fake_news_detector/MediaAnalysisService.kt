@@ -152,6 +152,7 @@ class MediaAnalysisService : Service() {
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
+        NotificationMediaHelper.init(this)
         Log.d(TAG, "MediaAnalysisService created")
     }
 
@@ -207,7 +208,7 @@ class MediaAnalysisService : Service() {
                 performAnalysis(filePath, fileType, taskId)
             } catch (e: Exception) {
                 Log.e(TAG, "Analysis failed: ${e.message}")
-                updateNotification("Analysis failed: ${e.message}", 0)
+                updateNotification("Analysis failed: ${e.message}", 0, filePath, fileType, isComplete = true)
                 stopSelf()
             }
         }
@@ -222,7 +223,7 @@ class MediaAnalysisService : Service() {
                 // Using a bare 'this' inside a suspend fun refers to the coroutine lambda
                 // receiver, which is NOT a Context and produces a wrong/null context error
                 // that silently causes the intent to fail.
-                updateNotification("Extracting video frames…", 0)
+                updateNotification("Extracting video frames…", 0, filePath, fileType)
                 sendProgressToFlutter(taskId, "extracting_frames", 0.0)
 
                 VideoFrameProcessingService.startVideoFrameProcessing(
@@ -244,7 +245,7 @@ class MediaAnalysisService : Service() {
 
             } else {
                 // Image path: upload then poll.
-                updateNotification("Uploading file…", 0)
+                updateNotification("Uploading file…", 0, filePath, fileType)
                 sendProgressToFlutter(taskId, "uploading", 0.0)
 
                 val uploadResponse = uploadService.uploadFile(filePath, fileType)
@@ -252,7 +253,7 @@ class MediaAnalysisService : Service() {
 
                 Log.d(TAG, "File uploaded successfully: ${uploadResponse.fileId}")
 
-                updateNotification("Processing…", 0)
+                updateNotification("Processing…", 0, filePath, fileType)
                 sendProgressToFlutter(taskId, "processing", 0.5)
 
                 val result = uploadService.pollUntilComplete(
@@ -269,7 +270,7 @@ class MediaAnalysisService : Service() {
                                     "completed" -> "Analysis complete"
                                     "failed"    -> "Analysis failed"
                                     else        -> "Processing…"
-                                }, 0
+                                }, 0, filePath, fileType, isComplete = analysisResult.isCompleted || analysisResult.isFailed
                             )
                             sendProgressToFlutter(taskId, status, if (status == "completed") 1.0 else 0.5)
                         }
@@ -277,7 +278,7 @@ class MediaAnalysisService : Service() {
                 )
 
                 if (!isCancelled) {
-                    updateNotification("Analysis complete: ${result.label}", 100)
+                    updateNotification("Analysis complete: ${result.label}", 100, filePath, fileType, isComplete = true)
                     Log.d(TAG, "Analysis completed: ${result.label} - ${result.confidence}")
                     sendResultToFlutter(taskId, result)
                     serviceScope.launch {
@@ -289,7 +290,7 @@ class MediaAnalysisService : Service() {
         } catch (e: Exception) {
             if (!isCancelled) {
                 Log.e(TAG, "Analysis failed: ${e.message}")
-                updateNotification("Analysis failed: ${e.message}", 0)
+                updateNotification("Analysis failed: ${e.message}", 0, filePath, fileType, isComplete = true)
                 sendErrorToFlutter(taskId, e.message ?: "Unknown error")
                 stopSelf()
             }
@@ -299,7 +300,7 @@ class MediaAnalysisService : Service() {
     private fun cancelAnalysisTask(taskId: String) {
         if (currentTaskId == taskId) {
             isCancelled = true
-            updateNotification("Analysis cancelled", 0)
+            updateNotification("Analysis cancelled", 0, null, null, isComplete = true)
             Log.d(TAG, "Analysis cancelled for task: $taskId")
             sendCancellationToFlutter(taskId)
             serviceScope.launch {
@@ -309,27 +310,103 @@ class MediaAnalysisService : Service() {
         }
     }
 
-    private fun createNotification(message: String, progress: Int): Notification {
+    private fun createNotification(
+        message: String,
+        progress: Int,
+        filePath: String? = null,
+        fileType: String? = null,
+        isComplete: Boolean = false
+    ): Notification {
         val intent = packageManager.getLaunchIntentForPackage(packageName)
         val pendingIntent = PendingIntent.getActivity(
-            this, 0, intent,
+            this,
+            0,
+            intent,
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
-        return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("Media Analysis")
+        
+        val builder = NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle(if (isComplete) "Analysis Complete" else "Media Analysis")
             .setContentText(message)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentIntent(pendingIntent)
-            .setProgress(100, progress, progress == 0)
-            .setOngoing(true)
-            .setAutoCancel(false)
-            .build()
+            .setProgress(if (isComplete) 0 else 100, progress, !isComplete && progress == 0)
+            .setOngoing(!isComplete)
+            .setAutoCancel(isComplete)
+
+        // Apply BigPictureStyle when analysis is complete and media is available
+        if (isComplete && filePath != null && fileType != null) {
+            applyMediaStyleAsync(builder, filePath, fileType)
+        }
+
+        return builder.build()
     }
 
-    private fun updateNotification(message: String, progress: Int) {
-        val notification = createNotification(message, progress)
+    /**
+     * Apply BigPictureStyle based on media type
+     * Uses NotificationMediaHelper for proper handling
+     */
+    private fun applyMediaStyleAsync(
+        builder: NotificationCompat.Builder,
+        filePath: String,
+        fileType: String
+    ) {
+        try {
+            when (fileType) {
+                "image" -> {
+                    val success = NotificationMediaHelper.applyBigPictureStyle(builder, filePath)
+                    if (success) {
+                        Log.d(TAG, "BigPictureStyle applied for image")
+                    } else {
+                        Log.w(TAG, "Failed to apply BigPictureStyle for image")
+                    }
+                }
+                "video" -> {
+                    val success = NotificationMediaHelper.applyVideoThumbnailStyle(builder, filePath)
+                    if (success) {
+                        Log.d(TAG, "BigPictureStyle applied for video")
+                    } else {
+                        Log.w(TAG, "Failed to apply BigPictureStyle for video")
+                    }
+                }
+                else -> {
+                    Log.w(TAG, "Unknown media type for BigPictureStyle: $fileType")
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error applying BigPictureStyle: ${e.message}")
+        }
+    }
+
+    private fun updateNotification(message: String, progress: Int, filePath: String? = null, fileType: String? = null, isComplete: Boolean = false) {
+        val notification = createNotification(message, progress, filePath, fileType, isComplete)
         (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
             .notify(NOTIFICATION_ID, notification)
         Log.d(TAG, "Notification updated: $message")
+    }
+
+    private fun getScaledBitmap(filePath: String): android.graphics.Bitmap? {
+        val options = android.graphics.BitmapFactory.Options()
+        options.inJustDecodeBounds = true
+        android.graphics.BitmapFactory.decodeFile(filePath, options)
+        
+        options.inSampleSize = calculateInSampleSize(options, 800, 800)
+        options.inJustDecodeBounds = false
+        
+        return android.graphics.BitmapFactory.decodeFile(filePath, options)
+    }
+
+    private fun calculateInSampleSize(options: android.graphics.BitmapFactory.Options, reqWidth: Int, reqHeight: Int): Int {
+        val height: Int = options.outHeight
+        val width: Int = options.outWidth
+        var inSampleSize = 1
+        if (height > reqHeight || width > reqWidth) {
+            val halfHeight: Int = height / 2
+            val halfWidth: Int = width / 2
+            while (halfHeight / inSampleSize >= reqHeight && halfWidth / inSampleSize >= reqWidth) {
+                inSampleSize *= 2
+            }
+        }
+        return inSampleSize
     }
 }

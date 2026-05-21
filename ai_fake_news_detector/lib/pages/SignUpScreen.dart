@@ -17,7 +17,8 @@ class SignUp extends StatefulWidget {
 class _SignUpState extends State<SignUp> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
-  final TextEditingController confirmPasswordController = TextEditingController();
+  final TextEditingController confirmPasswordController =
+      TextEditingController();
   final TextEditingController nameController = TextEditingController();
   bool _isLoading = false;
 
@@ -28,12 +29,12 @@ class _SignUpState extends State<SignUp> {
         automaticallyImplyLeading: false,
         backgroundColor: GlobalColors.mainColor,
         title: Text(
-          "AI & FAKE NEWS DETECTOR",
+          "AFND",
           style: TextStyle(
             color: Colors.white,
             fontSize: 20,
             fontWeight: FontWeight.bold,
-            height: 50
+            height: 50,
           ),
         ),
       ),
@@ -43,9 +44,27 @@ class _SignUpState extends State<SignUp> {
             width: double.infinity,
             padding: const EdgeInsets.all(15.0),
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center, // vertically centered
+              mainAxisAlignment:
+                  MainAxisAlignment.center, // vertically centered
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Center(
+                  child: Container(
+                    padding: const EdgeInsets.all(
+                      15,
+                    ), // Space between image and background border
+                    decoration: BoxDecoration(
+                      color: Colors.grey,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Image.asset(
+                      'assets/logo.png',
+                      height: 100,
+                      width: 100,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 15),
                 Text(
                   "Create account",
                   style: TextStyle(
@@ -84,13 +103,11 @@ class _SignUpState extends State<SignUp> {
                   obscure: true,
                 ),
 
-                const SizedBox(
-                  height: 10,
-                ),
+                const SizedBox(height: 10),
 
                 TextFormGlobal(
-                  controller:confirmPasswordController ,
-                  text:'Confirm password',
+                  controller: confirmPasswordController,
+                  text: 'Confirm password',
                   textInputType: TextInputType.text,
                   obscure: false,
                 ),
@@ -101,37 +118,39 @@ class _SignUpState extends State<SignUp> {
                   text: 'Sign Up',
                   color: GlobalColors.mainColor,
                   isLoading: _isLoading,
-                  onTap: _isLoading ? null : () async {
-                    // Validate inputs
-                    if (emailController.text.isEmpty || 
-                        passwordController.text.isEmpty || 
-                        nameController.text.isEmpty) {
-                      Get.snackbar('Error', 'Please fill in all fields');
-                      return;
-                    }
+                  onTap: _isLoading
+                      ? null
+                      : () async {
+                          // Validate inputs
+                          if (emailController.text.isEmpty ||
+                              passwordController.text.isEmpty ||
+                              nameController.text.isEmpty) {
+                            Get.snackbar('Error', 'Please fill in all fields');
+                            return;
+                          }
 
-                    if (passwordController.text != confirmPasswordController.text) {
-                      Get.snackbar('Error', 'Passwords do not match');
-                      return;
-                    }
+                          if (passwordController.text !=
+                              confirmPasswordController.text) {
+                            Get.snackbar('Error', 'Passwords do not match');
+                            return;
+                          }
 
-                    setState(() => _isLoading = true);
+                          setState(() => _isLoading = true);
 
-                    // Call signup API
-                    final authController = Get.find<AuthController>();
-                    final success = await authController.signUp(
-                      email: emailController.text,
-                      password: passwordController.text,
-                      name: nameController.text,
-                    );
+                          // Call signup API
+                          final authController = Get.find<AuthController>();
+                          final success = await authController.signUp(
+                            email: emailController.text,
+                            password: passwordController.text,
+                            name: nameController.text,
+                          );
 
-                    if (success) {
-                      Get.offAll(() => Homepage());
-                    }
-                    if (mounted) setState(() => _isLoading = false);
-                  },
+                          if (success) {
+                            Get.offAll(() => Homepage());
+                          }
+                          if (mounted) setState(() => _isLoading = false);
+                        },
                 ),
-
               ],
             ),
           ),
@@ -152,12 +171,10 @@ class _SignUpState extends State<SignUp> {
               ),
             ),
             InkWell(
-              onTap: (){
+              onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(
-                    builder:(context)=>Login()
-                ),
+                  MaterialPageRoute(builder: (context) => Login()),
                 );
               },
               child: Text(

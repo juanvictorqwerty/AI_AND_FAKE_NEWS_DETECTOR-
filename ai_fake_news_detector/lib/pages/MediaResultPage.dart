@@ -4,32 +4,14 @@ import 'package:video_player/video_player.dart';
 import 'package:ai_fake_news_detector/services/media_analysis_channel.dart';
 import 'package:ai_fake_news_detector/models/analysis_result.dart';
 import 'package:ai_fake_news_detector/models/video_frame_result.dart';
+import 'package:ai_fake_news_detector/services/media_cache.dart';
 import 'package:ai_fake_news_detector/utils/global.colors.dart';
-import 'package:ai_fake_news_detector/widgets/media_result/media_preview_widget.dart';
+import 'package:ai_fake_news_detector/widgets/processing/media_preview_widget.dart';
 import 'package:ai_fake_news_detector/widgets/media_result/file_info_widget.dart';
 import 'package:ai_fake_news_detector/widgets/media_result/analysis_result_widget.dart';
 import 'package:ai_fake_news_detector/widgets/media_result/video_frame_result_widget.dart';
 import 'package:ai_fake_news_detector/widgets/media_result/action_buttons_widget.dart';
 
-/// Displays the media preview and the analysis result.
-///
-/// Route arguments (all provided by ProcessingScreen via pushReplacementNamed):
-/// ```dart
-/// {
-///   'filePath'      : String,
-///   'fileType'      : String,
-///   'fileSize'      : int,
-///   'videoDuration' : int?,
-///   'taskId'        : String,
-///   'status'        : String,   // 'completed' | 'failed'
-///   'label'         : String?,
-///   'confidence'    : double?,
-///   'probabilities' : Map?,
-///   'processingTime': dynamic?,
-///   'fileId'        : String?,
-///   'error'         : String?,
-/// }
-/// ```
 class MediaResultPage extends StatefulWidget {
   const MediaResultPage({super.key});
 
@@ -152,6 +134,8 @@ class _MediaResultPageState extends State<MediaResultPage> {
       MediaAnalysisChannel.removeOnAnalysisResult(_onResult);
       MediaAnalysisChannel.removeOnAnalysisError(_onError);
     }
+    // Clean the cache after finishing
+    MediaCache.clear();
     super.dispose();
   }
 
@@ -191,8 +175,6 @@ class _MediaResultPageState extends State<MediaResultPage> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             MediaPreviewWidget(
-              filePath: _filePath,
-              fileType: _fileType,
               videoController: _videoController,
               isVideoPlaying: _isVideoPlaying,
               onTogglePlayback: _toggleVideoPlayback,

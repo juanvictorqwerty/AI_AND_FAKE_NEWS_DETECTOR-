@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:ai_fake_news_detector/services/media_analysis_channel.dart';
 import 'package:ai_fake_news_detector/widgets/processing/processing_app_bar.dart';
-import 'package:ai_fake_news_detector/widgets/processing/file_thumb.dart';
-import 'package:ai_fake_news_detector/widgets/processing/stats_row.dart';
+import 'package:ai_fake_news_detector/widgets/processing/media_preview_widget.dart';
+import 'package:ai_fake_news_detector/widgets/processing/wave_animation.dart';
 import 'package:ai_fake_news_detector/widgets/processing/stage_card.dart';
 import 'package:ai_fake_news_detector/widgets/processing/retry_row.dart';
 import 'package:ai_fake_news_detector/widgets/processing/cancel_button.dart';
@@ -164,10 +164,22 @@ class _ProcessingScreenState extends State<ProcessingScreen>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            FileThumb(filePath: _filePath, fileType: _fileType),
+            const MediaPreviewWidget(),
             const SizedBox(height: 20),
-            StatsRow(progress: _progress, frameCount: _frameCount),
-            const SizedBox(height: 4),
+            if (_isActive) ...[
+              Container(
+                padding: const EdgeInsets.symmetric(vertical: 24),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: const Color(0xFFE4E1F5)),
+                ),
+                child: const Center(
+                  child: WaveAnimation(size: 40),
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
             StageCard(status: _status, progress: _progress),
             const SizedBox(height: 16),
             if (_status == 'failed') const RetryRow(),

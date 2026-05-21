@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:video_player/video_player.dart';
+import 'package:ai_fake_news_detector/services/media_cache.dart';
 
 /// Service for picking and validating media files (images and videos)
 /// 
@@ -343,6 +344,10 @@ class MediaPickerService extends GetxService {
       }
       
       debugPrint('MediaPickerService: Image validation successful');
+      MediaCache.cachedFile = file;
+      MediaCache.cachedBytes = await file.readAsBytes();
+      MediaCache.type = 'image';
+
       return {
         'success': true,
         'filePath': image.path,
@@ -419,6 +424,10 @@ class MediaPickerService extends GetxService {
       }
       
       debugPrint('MediaPickerService: Video validation successful');
+      MediaCache.cachedFile = file;
+      MediaCache.cachedBytes = await file.readAsBytes();
+      MediaCache.type = 'video';
+
       return {
         'success': true,
         'filePath': video.path,
@@ -503,6 +512,10 @@ class MediaPickerService extends GetxService {
         }
         
         debugPrint('MediaPickerService: Video validation successful');
+        MediaCache.cachedFile = file;
+        MediaCache.cachedBytes = await file.readAsBytes();
+        MediaCache.type = 'video';
+
         return {
           'success': true,
           'filePath': media.path,
@@ -513,6 +526,10 @@ class MediaPickerService extends GetxService {
       }
       
       debugPrint('MediaPickerService: Image validation successful');
+      MediaCache.cachedFile = file;
+      MediaCache.cachedBytes = await file.readAsBytes();
+      MediaCache.type = 'image';
+
       return {
         'success': true,
         'filePath': media.path,

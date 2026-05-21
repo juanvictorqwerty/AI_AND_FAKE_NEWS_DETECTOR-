@@ -5,13 +5,13 @@ import 'package:ai_fake_news_detector/widgets/settings/dialogs/change_password_d
 import 'package:ai_fake_news_detector/widgets/settings/dialogs/complete_profile_dialog.dart';
 import 'package:ai_fake_news_detector/widgets/settings/dialogs/edit_profile_dialog.dart';
 import 'package:ai_fake_news_detector/widgets/settings/dialogs/logout_dialog.dart';
-import 'package:ai_fake_news_detector/widgets/settings/overlay_permission_tile.dart';
 import 'package:ai_fake_news_detector/widgets/settings/settings_card.dart';
 import 'package:ai_fake_news_detector/widgets/settings/settings_section_label.dart';
 import 'package:ai_fake_news_detector/widgets/settings/settings_tile.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -22,8 +22,7 @@ class SettingsPage extends StatefulWidget {
 
 class _SettingsPageState extends State<SettingsPage>
     with SingleTickerProviderStateMixin {
-  bool _overlayPermissionGranted = false;
-  static const platform = MethodChannel('android_intent/android_intent');
+  bool _notificationPermissionGranted = false;
   AnimationController? _animController;
   Animation<double>? _fadeAnim;
   late final AppLifecycleListener _lifecycleListener;
@@ -35,16 +34,19 @@ class _SettingsPageState extends State<SettingsPage>
       vsync: this,
       duration: const Duration(milliseconds: 600),
     );
-    _fadeAnim = CurvedAnimation(parent: _animController!, curve: Curves.easeOut);
+    _fadeAnim = CurvedAnimation(
+      parent: _animController!,
+      curve: Curves.easeOut,
+    );
     _animController!.forward();
 
     // Listen for app lifecycle to check permission when returning from settings
     _lifecycleListener = AppLifecycleListener(
-      onResume: () => _checkOverlayPermission(),
+      onResume: () => _checkNotificationPermission(),
     );
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _checkOverlayPermission();
+      _checkNotificationPermission();
     });
   }
 
@@ -55,15 +57,10 @@ class _SettingsPageState extends State<SettingsPage>
     super.dispose();
   }
 
-  Future<void> _checkOverlayPermission() async {
-    try {
-      final bool result = await platform.invokeMethod('canDrawOverlays');
-      if (mounted) {
-        setState(() => _overlayPermissionGranted = result);
-      }
-    } catch (e) {
-      debugPrint("Error checking permission: $e");
-      if (mounted) setState(() => _overlayPermissionGranted = false);
+  Future<void> _checkNotificationPermission() async {
+    final status = await Permission.notification.status;
+    if (mounted) {
+      setState(() => _notificationPermissionGranted = status.isGranted);
     }
   }
 
@@ -83,52 +80,12 @@ class _SettingsPageState extends State<SettingsPage>
     LogoutDialog.show(context);
   }
 
-  /// Opens the MANAGE_OVERLAY_PERMISSION settings screen directly —
-  /// the exact page where users toggle "Allow display over other apps".
-  Future<void> _openOverlayPermissionSettings() async {
-    try {
-      // First try: dedicated method that fires the overlay-specific intent
-      await platform.invokeMethod('openOverlaySettings');
-
-      // Re-check permission when the user returns
-      await Future.delayed(const Duration(milliseconds: 800));
-      await _checkOverlayPermission();
-    } catch (e) {
-      debugPrint("Primary overlay intent failed: $e — trying fallback");
-      try {
-        // Fallback: pass the action + package URI via the generic launch method
-        final Map<String, dynamic> args = {
-          'action': 'android.settings.action.MANAGE_OVERLAY_PERMISSION',
-          'data': 'package:com.example.ai_fake_news_detector',
-        };
-        await platform.invokeMethod('launch', args);
-
-        await Future.delayed(const Duration(milliseconds: 800));
-        await _checkOverlayPermission();
-      } catch (e2) {
-        debugPrint("Fallback also failed: $e2");
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
-              backgroundColor: const Color(0xFF1A1A2E),
-              content: const Text(
-                "Go to Settings → Apps → AFND → Display over other apps",
-                style: TextStyle(color: Colors.white),
-              ),
-              duration: const Duration(seconds: 5),
-              action: SnackBarAction(
-                label: "OK",
-                textColor: GlobalColors.mainColor,
-                onPressed: () {},
-              ),
-            ),
-          );
-        }
-      }
+  Future<void> _openNotificationPermissionSettings() async {
+    final status = await Permission.notification.request();
+    if (status.isPermanentlyDenied) {
+      await openAppSettings();
     }
+    await _checkNotificationPermission();
   }
 
   @override
@@ -151,6 +108,14 @@ class _SettingsPageState extends State<SettingsPage>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Center(
+                  child: Image.asset(
+                    'assets/logo.png',
+                    height: 100,
+                    width: 100,
+                  ),
+                ),
+                const SizedBox(height: 15),
                 const SettingsSectionLabel(label: "Account"),
                 const SizedBox(height: 10),
                 SettingsCard(
@@ -161,21 +126,27 @@ class _SettingsPageState extends State<SettingsPage>
                       iconColor: GlobalColors.mainColor,
                       iconBg: GlobalColors.mainColor.withOpacity(0.1),
                       title: userName,
-                      subtitle: isAnonymous ? "Anonymous user" : userEmail.isNotEmpty ? userEmail : "No email",
+                      subtitle: isAnonymous
+                          ? "Anonymous user"
+                          : userEmail.isNotEmpty
+                          ? userEmail
+                          : "No email",
                       onTap: () {},
                     ),
                     // Complete/Edit profile tile
                     SettingsTile(
-                      icon: isAnonymous ? Icons.person_add_alt_1_rounded : Icons.edit_outlined,
+                      icon: isAnonymous
+                          ? Icons.person_add_alt_1_rounded
+                          : Icons.edit_outlined,
                       iconColor: const Color(0xFF2196F3),
                       iconBg: const Color(0xFFE3F2FD),
                       title: isAnonymous ? "Complete profile" : "Edit profile",
                       subtitle: isAnonymous
-                        ? "Add name, email & password"
-                        : "Update your personal info",
-                      onTap: () => isAnonymous 
-                        ? _showCompleteProfileDialog()
-                        : _showEditProfileDialog(),
+                          ? "Add name, email & password"
+                          : "Update your personal info",
+                      onTap: () => isAnonymous
+                          ? _showCompleteProfileDialog()
+                          : _showEditProfileDialog(),
                     ),
                     // Password tile - only for non-anonymous users
                     if (!isAnonymous)
@@ -202,10 +173,40 @@ class _SettingsPageState extends State<SettingsPage>
                 const SizedBox(height: 10),
                 SettingsCard(
                   children: [
-                    OverlayPermissionTile(
-                      isGranted: _overlayPermissionGranted,
-                      onOpenSettings: _openOverlayPermissionSettings,
-                      platform: platform,
+                    SettingsTile(
+                      icon: Icons.notifications_active_rounded,
+                      iconColor: GlobalColors.mainColor,
+                      iconBg: GlobalColors.mainColor.withOpacity(0.1),
+                      title: "Notifications",
+                      subtitle: "Required for permanent fact check",
+                      onTap: _openNotificationPermissionSettings,
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          AnimatedContainer(
+                            duration: const Duration(milliseconds: 300),
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: _notificationPermissionGranted
+                                  ? const Color(0xFFE8F5E9)
+                                  : const Color(0xFFFFEBEE),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              _notificationPermissionGranted ? "Enabled" : "Disabled",
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: _notificationPermissionGranted
+                                    ? const Color(0xFF2E7D32)
+                                    : const Color(0xFFC62828),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Icon(Icons.chevron_right_rounded, color: Colors.grey[350], size: 22),
+                        ],
+                      ),
                     ),
                     const PermanentFactCheck(),
                   ],

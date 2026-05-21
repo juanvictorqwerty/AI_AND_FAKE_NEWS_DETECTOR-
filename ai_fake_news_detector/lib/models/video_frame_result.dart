@@ -46,9 +46,16 @@ class VideoFrameResult {
       });
     }
 
+    String parsedPrediction = json['prediction'] as String? ?? '';
+    if (parsedPrediction.toLowerCase() == 'hum') {
+      parsedPrediction = 'Human';
+    } else if (parsedPrediction.toLowerCase() == 'ai') {
+      parsedPrediction = 'AI';
+    }
+
     return VideoFrameResult(
       status: json['status'] as String? ?? '',
-      prediction: json['prediction'] as String? ?? '',
+      prediction: parsedPrediction,
       confidence: (json['confidence'] as num?)?.toDouble() ?? 0.0,
       frameCount: json['frame_count'] as int? ?? 0,
       validFrameCount: json['valid_frame_count'] as int? ?? 0,
@@ -82,7 +89,7 @@ class VideoFrameResult {
   bool get isAi => prediction.toLowerCase() == 'ai' || prediction.toLowerCase() == 'artificial';
 
   /// Check if result indicates human-generated content
-  bool get isHuman => prediction.toLowerCase() == 'human';
+  bool get isHuman => prediction.toLowerCase() == 'human' || prediction.toLowerCase() == 'hum';
 
   /// Check if there was an error
   bool get hasError => error != null && error!.isNotEmpty;
@@ -123,9 +130,16 @@ class FramePrediction {
 
   /// Create FramePrediction from JSON
   factory FramePrediction.fromJson(Map<String, dynamic> json) {
+    String parsedPrediction = json['prediction'] as String? ?? '';
+    if (parsedPrediction.toLowerCase() == 'hum') {
+      parsedPrediction = 'Human';
+    } else if (parsedPrediction.toLowerCase() == 'ai') {
+      parsedPrediction = 'AI';
+    }
+
     return FramePrediction(
       filename: json['filename'] as String? ?? '',
-      prediction: json['prediction'] as String? ?? '',
+      prediction: parsedPrediction,
       confidence: (json['confidence'] as num?)?.toDouble() ?? 0.0,
       url: json['url'] as String?,
     );
@@ -145,7 +159,7 @@ class FramePrediction {
   bool get isAi => prediction.toLowerCase() == 'ai' || prediction.toLowerCase() == 'artificial';
 
   /// Check if prediction indicates human-generated content
-  bool get isHuman => prediction.toLowerCase() == 'human';
+  bool get isHuman => prediction.toLowerCase() == 'human' || prediction.toLowerCase() == 'hum';
 
   /// Get confidence as percentage string
   String get confidencePercentage => '${(confidence * 100).toStringAsFixed(1)}%';

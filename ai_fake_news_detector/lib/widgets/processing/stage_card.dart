@@ -134,21 +134,12 @@ class StageCard extends StatelessWidget {
               ),
               if (showProgress) ...[
                 const SizedBox(height: 10),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
-                  child: LinearProgressIndicator(
-                    value: progress,
-                    minHeight: 4,
-                    backgroundColor: _surface3,
-                    valueColor: const AlwaysStoppedAnimation<Color>(_accent),
-                  ),
-                ),
-                const SizedBox(height: 5),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: Text(
-                    '${(progress * 100).toStringAsFixed(0)}%',
-                    style: GoogleFonts.dmSans(fontSize: 11, color: _textMuted),
+                const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.5,
+                    valueColor: AlwaysStoppedAnimation<Color>(_accent),
                   ),
                 ),
               ],
