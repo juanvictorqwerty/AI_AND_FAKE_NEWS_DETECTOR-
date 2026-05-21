@@ -21,7 +21,7 @@ class HomeHeader extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Text(
-          "Verify the truth behind AI and fake news",
+          "Verify the truth behind AI and claims with AFND",
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w400,
