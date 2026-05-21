@@ -111,10 +111,10 @@ async def analyze_media(
         probabilities = analysis_result.get('probabilities', {})
         processing_time = analysis_result.get('processing_time', 0.0)
         
-        # Normalize prediction to 'real' or 'fake'
+        # Normalize prediction to 'real' or 'artificial'
         # The AI model returns labels like 'ai' or 'human'
         if prediction.lower() in ['ai', 'artificial', 'fake']:
-            prediction = 'fake'
+            prediction = 'artificial'
         elif prediction.lower() in ['human', 'real']:
             prediction = 'real'
         
@@ -381,7 +381,7 @@ async def process_url_analysis(url: str, user_id: str):
 
         # Normalize prediction
         if prediction.lower() in ['ai', 'artificial', 'fake']:
-            prediction = 'fake'
+            prediction = 'artificial'
         elif prediction.lower() in ['human', 'real']:
             prediction = 'real'
 
