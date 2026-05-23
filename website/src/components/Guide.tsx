@@ -3,6 +3,7 @@
 import { Search, Image as ImageIcon, Share2, Bell, CheckCircle } from "lucide-react";
 
 export default function Guide() {
+    const apkURL=process.env.APK_URL
     return (
         <main className="min-h-screen px-6 py-12 flex flex-col items-center bg-white dark:bg-gray-900">
         
@@ -158,7 +159,7 @@ export default function Guide() {
             </p>
 
             <a
-            href="https://drive.google.com/file/d/14pHOdg-kEApiWj7GeiGJ_zG9ebiTE_kq/view?usp=drive_link"
+            href={apkURL}
             className="inline-block rounded-full bg-blue-600 px-8 py-3 text-white font-medium shadow-md hover:bg-blue-700 transition"
             >
             Get Started

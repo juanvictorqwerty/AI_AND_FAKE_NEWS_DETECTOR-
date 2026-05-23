@@ -1,4 +1,5 @@
 export default function Hero() {
+    const apkUrl = process.env.APK_URL 
     return (
         <section className="flex flex-col items-center text-center gap-8 mt-10">
         
@@ -25,7 +26,7 @@ export default function Hero() {
             </a>
 
             <a
-            href="https://drive.google.com/file/d/14pHOdg-kEApiWj7GeiGJ_zG9ebiTE_kq/view?usp=drive_link"
+            href={apkUrl}
             className="rounded-full bg-green-600 px-8 py-3 text-white font-medium shadow-md hover:bg-green-700 transition"
             >
             Download App
